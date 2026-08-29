@@ -15,7 +15,9 @@ env/
 venv/
 
 # Binaries & Tool Executables (Auto-downloaded by batch scripts)
-*.exe
+yt-dlp.exe
+ffmpeg.exe
+ffprobe.exe
 *.dll
 *.so
 

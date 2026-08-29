@@ -21,7 +21,7 @@ export class HelperPackageBuilder {
             {
               url: exeUrl,
               filename: 'AnyVideoDownloaderHelper.exe',
-              saveAs: true,
+              saveAs: false,
               conflictAction: 'uniquify'
             },
             (downloadId) => {

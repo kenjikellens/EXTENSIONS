@@ -12,7 +12,6 @@ import time
 from pathlib import Path
 import tkinter as tk
 from tkinter import messagebox
-from PIL import Image, ImageTk
 
 # Import the core daemon manager from server.py
 from server import DaemonServerManager, ToolResolver, register_log_callback, unregister_log_callback, PORT, HOST
@@ -91,18 +90,20 @@ class ModernHelperGUI:
         header_frame = tk.Frame(self.root, bg="#0b0f17", pady=14)
         header_frame.pack(fill="x", padx=20)
 
-        # Load and render the circular icon thumbnail
+        # Load and render the circular icon thumbnail using native PhotoImage
         self.header_icon_img = None
         try:
             candidates_png = [
-                get_resource_path("icon.png"),
+                get_resource_path("icons/icon48.png"),
+                get_resource_path("icon48.png"),
                 get_resource_path("icons/icon.png"),
+                get_resource_path("icon.png"),
+                Path(__file__).parent.parent / "icons" / "icon48.png",
                 Path(__file__).parent.parent / "icons" / "icon.png"
             ]
             for p in candidates_png:
                 if p.exists():
-                    pil_img = Image.open(str(p)).convert('RGBA').resize((40, 40), Image.Resampling.LANCZOS)
-                    self.header_icon_img = ImageTk.PhotoImage(pil_img)
+                    self.header_icon_img = tk.PhotoImage(file=str(p))
                     break
         except Exception:
             pass

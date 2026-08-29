@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Any Video Downloader",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Detecteer, sniff en download video's, HLS (.m3u8), DASH (.mpd), MP4 en Blobs.",
   "permissions": [
     "webRequest",

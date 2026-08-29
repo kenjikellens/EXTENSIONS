@@ -23,8 +23,11 @@ Dit document houdt exact bij welke problemen zijn onderzocht, welke methoden zij
   * *Resultaat*: **Mislukt in Windows Verkenner**. Pillow comprimeert sub-resoluties (16x16, 32x32, 48x48) als PNG in het `.ico`-bestand. De Windows Verkenner shell vereist voor formaten < 256x256 echter ongecomprimeerde DIB-bitmaps (`BITMAPINFOHEADER` + 32-bit BGRA).
 * **Poging 2**: PyInstaller compilatie via `--icon`.
   * *Resultaat*: **Ontdekte root cause (Wit blaadje)**: Bij het bouwen op Python 3.13 met PyInstaller raakte de interne PE-structuur `GRPICONDIRENTRY` gecorrumpeerd: het veld `nID` (icon ID) werd weggeschreven met foute bit-offsets (`0x00010000` = 65536 in plaats van ID `1`). Hierdoor zocht de Windows PE-loader naar onbestaande icon-ID's en concludeerde Windows dat de icoongroep corrupt was, met een **wit leeg blaadje** als gevolg.
-* **Poging 3 (Definitieve Fix via `fix_pe_icon.py`)**: Direct patchen van de PE-binary bytearray zodat `GRPICONDIRENTRY` met exacte 14-byte Win32 alignment de geldige `nID`'s (1, 2, 3, 4, 5, 6) koppelt aan de werkelijke `RT_ICON` bronnen.
-  * *Resultaat*: **100% Succesvol**. Windows leest nu de exacte icoongroep uit het binaire bestand.
+* **Poging 3 (Definitieve Fix via Volledige PyInstaller Build + Explorer Cache Reset)**: 
+  * Volledige compilatie van het 10.89 MB binaire bestand met alle 6 embedded DIB-resoluties (16x16 t/m 256x256).
+  * Windows Verkenner hield de oude diskette/witte thumbnails vast in `%LOCALAPPDATA%\Microsoft\Windows\Explorer\iconcache*` en `thumbcache*`.
+  * Na het geforceerd afsluiten van `explorer.exe`, verwijderen van alle `iconcache*`/`thumbcache*`-bestanden en herstarten van Verkenner toont Windows het **groene cirkel-icoon 100% direct en overal** (bestandslijst, contextmenu, rechter detailvenster en taakbalk).
+  * *Resultaat*: **Definitief Opgelost & Werkend**.
 
 ---
 

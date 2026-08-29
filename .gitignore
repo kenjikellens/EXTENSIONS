@@ -1,0 +1,29 @@
+# Operating System Files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.env
+.venv/
+env/
+venv/
+
+# Binaries & Tool Executables (Auto-downloaded by batch scripts)
+*.exe
+*.dll
+*.so
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Temporary logs
+*.log

@@ -1,237 +1,179 @@
 /**
  * @file popup.js
- * @description UI Controller for the Any Video Downloader extension popup.
- * Manages active tab stream detection, quality modal, HLS download engine, and user notifications.
+ * @description Main OOP Orchestrator for the Any Video Downloader extension popup.
  */
 
+import { HelperBridge } from './helper-bridge.js';
+import { HelperPackageBuilder } from './helper-bundle.js';
 import { HLSDownloaderEngine } from './hls-downloader.js';
+import { ThemeManager } from './theme-manager.js';
+import { ViewManager } from './view-manager.js';
 
-class PopupController {
+class PopupOrchestrator {
   constructor() {
     this.activeTab = null;
     this.streams = [];
     this.filteredStreams = [];
+    this.stopPolling = null;
     this.activeAbortController = null;
 
+    this.helperBridge = new HelperBridge();
+    this.themeManager = new ThemeManager();
+
     this.cacheDomElements();
+    this.viewManager = new ViewManager(this.elements);
     this.bindEvents();
     this.init();
   }
 
   /**
-   * Caches references to DOM elements in the popup.
+   * Caches all required DOM elements.
    */
   cacheDomElements() {
     this.elements = {
-      pageTitleLabel: document.getElementById('pageTitleLabel'),
+      // Header
+      clearStreamsBtn: document.getElementById('clearStreamsBtn'),
+      // Video info card
+      videoInfoSection: document.getElementById('videoInfoSection'),
+      videoThumbImg: document.getElementById('videoThumbImg'),
+      videoTitleLabel: document.getElementById('videoTitleLabel'),
+      videoDurationLabel: document.getElementById('videoDurationLabel'),
+      helperStatusPill: document.getElementById('helperStatusPill'),
+      // Setup banner
+      setupBanner: document.getElementById('setupBanner'),
+      downloadHelperBtn: document.getElementById('downloadHelperBtn'),
+      // Categorized tab container
+      categoryContainer: document.getElementById('categoryContainer'),
+      tabVideoBtn: document.getElementById('tabVideoBtn'),
+      tabAudioBtn: document.getElementById('tabAudioBtn'),
+      tabSubBtn: document.getElementById('tabSubBtn'),
+      categoryList: document.getElementById('categoryList'),
+      // Standard stream list
+      standardStreamContainer: document.getElementById('standardStreamContainer'),
       streamList: document.getElementById('streamList'),
       emptyState: document.getElementById('emptyState'),
-      clearStreamsBtn: document.getElementById('clearStreamsBtn'),
-      themeToggleBtn: document.getElementById('themeToggleBtn'),
-      themeToggleImg: document.getElementById('themeToggleImg'),
+      // Filter & manual inputs
+      filterBarSection: document.getElementById('filterBarSection'),
       searchFilterInput: document.getElementById('searchFilterInput'),
       manualUrlInput: document.getElementById('manualUrlInput'),
       manualDownloadBtn: document.getElementById('manualDownloadBtn'),
+      // Progress card
       progressSection: document.getElementById('downloadProgressSection'),
       progressStatusLabel: document.getElementById('progressStatusLabel'),
       progressPercentLabel: document.getElementById('progressPercentLabel'),
       progressBarFill: document.getElementById('progressBarFill'),
+      progressSpeedLabel: document.getElementById('progressSpeedLabel'),
       cancelDownloadBtn: document.getElementById('cancelDownloadBtn'),
-      qualityModal: document.getElementById('qualityModal'),
-      qualityList: document.getElementById('qualityList'),
-      closeQualityModalBtn: document.getElementById('closeQualityModalBtn'),
+      // Toast
       toast: document.getElementById('toastNotification')
     };
   }
 
   /**
-   * Binds user interaction event handlers.
+   * Binds global event handlers.
    */
   bindEvents() {
-    // Theme toggle
-    if (this.elements.themeToggleBtn) {
-      this.elements.themeToggleBtn.addEventListener('click', () => this.toggleTheme());
-    }
-
-    // Clear streams
     this.elements.clearStreamsBtn.addEventListener('click', () => this.handleClearStreams());
 
-    // Search / Filter
     this.elements.searchFilterInput.addEventListener('input', (e) => {
       this.filterStreams(e.target.value.trim().toLowerCase());
     });
 
-    // Manual Download
     this.elements.manualDownloadBtn.addEventListener('click', () => this.handleManualDownload());
     this.elements.manualUrlInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') this.handleManualDownload();
     });
 
-    // Cancel active download
     this.elements.cancelDownloadBtn.addEventListener('click', () => this.cancelActiveDownload());
+  }
 
-    // Close quality modal
-    this.elements.closeQualityModalBtn.addEventListener('click', () => this.hideQualityModal());
-    this.elements.qualityModal.addEventListener('click', (e) => {
-      if (e.target === this.elements.qualityModal) this.hideQualityModal();
+  /**
+   * Initializes theme, detects active tab, and branches between YouTube and streaming modes.
+   */
+  async init() {
+    await this.themeManager.init();
+
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab || !tab.id) return;
+      this.activeTab = tab;
+
+      const isYouTube = tab.url && (tab.url.includes('youtube.com/watch') || tab.url.includes('youtu.be/') || tab.url.includes('youtube.com/shorts'));
+
+      if (isYouTube) {
+        await this.handleYouTubeTab(tab.url);
+      } else {
+        this.handleStandardTab(tab.id);
+      }
+    } catch {
+      // Fallback to standard
+    }
+  }
+
+  /**
+   * Handles YouTube tab logic: checks helper status and loads formats or setup banner.
+   * @param {string} url - Active YouTube URL
+   */
+  async handleYouTubeTab(url) {
+    // Hide standard stream list container
+    this.elements.standardStreamContainer.classList.add('stream-container--hidden');
+    this.elements.filterBarSection.classList.add('filter-bar--hidden');
+
+    const health = await this.helperBridge.checkHealth();
+
+    if (health.online) {
+      this.viewManager.hideSetupBanner();
+      try {
+        this.showProgress('Video formaten analyseren...', 10);
+        const data = await this.helperBridge.getVideoInfo(url);
+        this.hideProgress();
+
+        this.viewManager.renderVideoHeader(data, true);
+        this.viewManager.renderCategorizedOptions(data, (type, item) => {
+          this.startHelperDownload(url, type, item, data.title);
+        });
+      } catch (err) {
+        this.hideProgress();
+        this.showToast(`Fout bij laden: ${err.message}`);
+      }
+    } else {
+      // Helper is offline
+      this.viewManager.renderVideoHeader({ title: this.activeTab.title || 'YouTube Video' }, false);
+      this.viewManager.renderSetupBanner(async () => {
+        try {
+          await HelperPackageBuilder.downloadHelperPackage();
+          this.showToast('start_helper.bat gedownload naar Downloads-map!');
+        } catch {
+          this.showToast('Kon helper bestand niet downloaden.');
+        }
+      });
+    }
+  }
+
+  /**
+   * Handles standard media tab sniffing (HLS .m3u8, MP4, DASH).
+   * @param {number} tabId - Active tab ID
+   */
+  handleStandardTab(tabId) {
+    this.elements.videoInfoSection.classList.add('video-info-card--hidden');
+    this.elements.setupBanner.classList.add('setup-banner--hidden');
+    this.elements.categoryContainer.classList.add('category-container--hidden');
+
+    chrome.runtime.sendMessage({ action: 'GET_TAB_STREAMS', tabId }, (res) => {
+      if (res && res.success) {
+        this.streams = res.streams || [];
+        this.filteredStreams = [...this.streams];
+        this.renderStandardStreams();
+      }
     });
   }
 
   /**
-   * Loads saved theme preference (light/dark) from browser storage.
+   * Renders stream cards for standard websites.
    */
-  async initTheme() {
-    try {
-      const data = await chrome.storage.local.get(['avd_theme']);
-      const currentTheme = data.avd_theme || 'dark';
-      this.applyTheme(currentTheme);
-    } catch {
-      this.applyTheme('dark');
-    }
-  }
-
-  /**
-   * Toggles between dark and light themes.
-   */
-  async toggleTheme() {
-    const isLight = document.body.classList.contains('theme-light');
-    const newTheme = isLight ? 'dark' : 'light';
-    this.applyTheme(newTheme);
-    try {
-      await chrome.storage.local.set({ avd_theme: newTheme });
-    } catch {
-      // Storage write error
-    }
-  }
-
-  /**
-   * Applies the theme classes and updates toggle button icon.
-   * @param {'dark'|'light'} theme - Target theme
-   */
-  applyTheme(theme) {
-    if (theme === 'light') {
-      document.body.classList.add('theme-light');
-      if (this.elements.themeToggleImg) {
-        this.elements.themeToggleImg.src = 'svg/moon.svg';
-        this.elements.themeToggleBtn.title = 'Wissel naar Donker thema';
-      }
-    } else {
-      document.body.classList.remove('theme-light');
-      if (this.elements.themeToggleImg) {
-        this.elements.themeToggleImg.src = 'svg/sun.svg';
-        this.elements.themeToggleBtn.title = 'Wissel naar Licht thema';
-      }
-    }
-  }
-
-  /**
-   * Initializes popup by querying the active browser tab.
-   */
-  async init() {
-    await this.initTheme();
-    try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab || !tab.id) {
-        this.elements.pageTitleLabel.textContent = 'Geen actieve tab gevonden';
-        return;
-      }
-
-      this.activeTab = tab;
-      this.elements.pageTitleLabel.textContent = tab.title || tab.url || 'Huidige pagina';
-
-      this.fetchTabStreams();
-    } catch {
-      this.elements.pageTitleLabel.textContent = 'Kon actieve tab niet uitlezen';
-    }
-  }
-
-  /**
-   * Fetches the detected streams for the active tab from background service worker.
-   */
-  fetchTabStreams() {
-    if (!this.activeTab) return;
-
-    chrome.runtime.sendMessage(
-      { action: 'GET_TAB_STREAMS', tabId: this.activeTab.id },
-      (response) => {
-        if (response && response.success) {
-          this.streams = response.streams || [];
-          if (response.title) {
-            this.elements.pageTitleLabel.textContent = response.title;
-          }
-          this.filteredStreams = [...this.streams];
-          this.renderStreams();
-        }
-      }
-    );
-  }
-
-  /**
-   * Filters the displayed streams based on search query.
-   * @param {string} query - Search term
-   */
-  filterStreams(query) {
-    if (!query) {
-      this.filteredStreams = [...this.streams];
-    } else {
-      this.filteredStreams = this.streams.filter((s) => {
-        const titleMatch = (s.title || '').toLowerCase().includes(query);
-        const urlMatch = s.url.toLowerCase().includes(query);
-        const typeMatch = s.type.toLowerCase().includes(query);
-        const resMatch = (s.resolution || '').toLowerCase().includes(query);
-        return titleMatch || urlMatch || typeMatch || resMatch;
-      });
-    }
-    this.renderStreams();
-  }
-
-  /**
-   * Clears streams stored in background for this tab.
-   */
-  handleClearStreams() {
-    if (!this.activeTab) return;
-
-    chrome.runtime.sendMessage(
-      { action: 'CLEAR_TAB_STREAMS', tabId: this.activeTab.id },
-      () => {
-        this.streams = [];
-        this.filteredStreams = [];
-        this.renderStreams();
-        this.showToast('Stream lijst gewist');
-      }
-    );
-  }
-
-  /**
-   * Handles manual URL input download submission.
-   */
-  handleManualDownload() {
-    const url = this.elements.manualUrlInput.value.trim();
-    if (!url) return;
-
-    const lower = url.toLowerCase();
-    let streamType = 'direct';
-    if (lower.includes('.m3u8')) streamType = 'hls';
-    else if (lower.includes('.mpd')) streamType = 'dash';
-    else if (lower.startsWith('blob:')) streamType = 'blob';
-
-    const manualStream = {
-      id: `manual_${Date.now()}`,
-      url: url,
-      type: streamType,
-      title: 'Handmatige Stream',
-      detectedAt: Date.now()
-    };
-
-    this.elements.manualUrlInput.value = '';
-    this.startDownload(manualStream);
-  }
-
-  /**
-   * Renders stream cards in the popup list container.
-   */
-  renderStreams() {
-    this.elements.streamList.innerHTML = '';
+  renderStandardStreams() {
+    const list = this.elements.streamList;
+    list.innerHTML = '';
 
     if (this.filteredStreams.length === 0) {
       this.elements.emptyState.classList.add('empty-state--visible');
@@ -244,129 +186,97 @@ class PopupController {
       const card = document.createElement('div');
       card.className = 'stream-card';
 
-      // Badge type modifier
-      const badgeClass = `status-badge--${stream.type}`;
-
-      // Resolution label
       const resLabel = stream.resolution ? stream.resolution : `Stream #${index + 1}`;
 
-      // Card structure
       card.innerHTML = `
         <div class="stream-card__top">
           <div class="stream-card__meta">
-            <span class="status-badge ${badgeClass}">${stream.type}</span>
-            <span class="stream-card__res">${resLabel}</span>
+            <span class="status-badge">${stream.type}</span>
+            <span style="font-size:10px;color:var(--text-muted);">${resLabel}</span>
           </div>
-          <span class="stream-card__source">${stream.source || 'webRequest'}</span>
         </div>
-        <div class="stream-card__title">${this.escapeHtml(stream.title || 'Video Stream')}</div>
-        <div class="stream-card__url" title="${this.escapeHtml(stream.url)}">${this.escapeHtml(stream.url)}</div>
+        <div class="stream-card__title">${this.viewManager.escapeHtml(stream.title || 'Video Stream')}</div>
+        <div class="stream-card__url">${this.viewManager.escapeHtml(stream.url)}</div>
         <div class="stream-card__actions">
-          <button class="pill-btn pill-btn--primary btn-download">
+          <button class="pill-btn pill-btn--primary btn-dl">
             <img src="svg/download.svg" alt="Download" class="pill-btn__img" />
             <span>Download</span>
           </button>
-          <button class="pill-btn pill-btn--secondary btn-copy" title="Kopieer URL">
+          <button class="pill-btn pill-btn--secondary btn-cp">
             <img src="svg/copy.svg" alt="Kopiëren" class="pill-btn__img" />
             <span>Kopieer</span>
           </button>
         </div>
       `;
 
-      // Event bindings
-      card.querySelector('.btn-download').addEventListener('click', () => {
-        if (stream.type === 'hls') {
-          this.checkAndDownloadHLS(stream);
-        } else {
-          this.startDownload(stream);
-        }
-      });
-
-      card.querySelector('.btn-copy').addEventListener('click', () => {
+      card.querySelector('.btn-dl').onclick = () => this.startStandardDownload(stream);
+      card.querySelector('.btn-cp').onclick = () => {
         navigator.clipboard.writeText(stream.url);
-        this.showToast('URL gekopieerd naar klembord!');
-      });
+        this.showToast('URL gekopieerd!');
+      };
 
-      this.elements.streamList.appendChild(card);
+      list.appendChild(card);
     });
   }
 
   /**
-   * Inspects HLS master playlist for multiple qualities before starting download.
-   * @param {Object} stream - Stream object
+   * Filters streams in standard mode.
+   * @param {string} query
    */
-  async checkAndDownloadHLS(stream) {
-    try {
-      this.showProgress('Kwaliteiten analyseren...', 0);
-      const variants = await HLSDownloaderEngine.parseMasterPlaylist(stream.url);
-      this.hideProgress();
+  filterStreams(query) {
+    if (!query) {
+      this.filteredStreams = [...this.streams];
+    } else {
+      this.filteredStreams = this.streams.filter((s) => {
+        return (s.title || '').toLowerCase().includes(query) || s.url.toLowerCase().includes(query) || s.type.toLowerCase().includes(query);
+      });
+    }
+    this.renderStandardStreams();
+  }
 
-      if (variants && variants.length > 1) {
-        this.showQualityModal(variants, stream);
-      } else {
-        this.startDownload(stream);
-      }
-    } catch {
+  /**
+   * Starts downloading via the local helper server.
+   */
+  async startHelperDownload(url, type, item, title) {
+    const params = {
+      url: url,
+      type: type,
+      height: item.height || null,
+      abr: item.abr || null,
+      lang: item.lang || null,
+      title: title || 'video'
+    };
+
+    try {
+      this.showProgress('Download starten...', 0);
+      const taskId = await this.helperBridge.startDownload(params);
+
+      this.stopPolling = this.helperBridge.pollStatus(
+        taskId,
+        (prog) => {
+          const speedText = prog.speed ? `${prog.speed} - ETA ${prog.eta}` : '';
+          this.showProgress(`Downloaden: ${prog.percent.toFixed(1)}%`, prog.percent, speedText);
+        },
+        (done) => {
+          this.hideProgress();
+          this.showToast(`Download voltooid: ${done.filename}`);
+        },
+        (err) => {
+          this.hideProgress();
+          this.showToast(`Fout: ${err.message}`);
+        }
+      );
+    } catch (err) {
       this.hideProgress();
-      this.startDownload(stream);
+      this.showToast(`Fout: ${err.message}`);
     }
   }
 
   /**
-   * Displays the quality selection modal for multi-variant HLS streams.
-   * @param {Array} variants - Array of variant objects
-   * @param {Object} baseStream - Original stream metadata
+   * Starts in-browser HLS or direct download for standard streaming sites.
    */
-  showQualityModal(variants, baseStream) {
-    this.elements.qualityList.innerHTML = '';
-
-    // Sort by bandwidth descending
-    variants.sort((a, b) => (b.bandwidth || 0) - (a.bandwidth || 0));
-
-    variants.forEach((v) => {
-      const btn = document.createElement('button');
-      btn.className = 'quality-item-btn';
-
-      const resText = v.resolution || 'Auto Resolutie';
-      const bitRateText = v.bandwidth ? `~${Math.round(v.bandwidth / 1000)} kbps` : '';
-
-      btn.innerHTML = `
-        <span><strong>${resText}</strong></span>
-        <span style="color: #9ca3af; font-size: 11px;">${bitRateText}</span>
-      `;
-
-      btn.addEventListener('click', () => {
-        this.hideQualityModal();
-        this.startDownload({
-          ...baseStream,
-          url: v.url,
-          resolution: v.resolution
-        });
-      });
-
-      this.elements.qualityList.appendChild(btn);
-    });
-
-    this.elements.qualityModal.classList.remove('modal-backdrop--hidden');
-  }
-
-  /**
-   * Hides the quality selection modal.
-   */
-  hideQualityModal() {
-    this.elements.qualityModal.classList.add('modal-backdrop--hidden');
-  }
-
-  /**
-   * Starts downloading the specified stream.
-   * @param {Object} stream - Stream metadata object
-   */
-  async startDownload(stream) {
-    const rawTitle = (stream.title || (this.activeTab && this.activeTab.title) || 'video')
-      .replace(/[/\\?%*:|"<>]/g, '_')
-      .trim();
-
-    const filename = `${rawTitle || 'video'}`;
+  async startStandardDownload(stream) {
+    const rawTitle = (stream.title || 'video').replace(/[/\\?%*:|"<>]/g, '_').trim();
 
     if (stream.type === 'hls') {
       this.activeAbortController = new AbortController();
@@ -375,26 +285,19 @@ class PopupController {
       try {
         await HLSDownloaderEngine.downloadAndMergeHLS(
           stream.url,
-          filename,
-          (progress) => {
-            this.showProgress(progress.status, progress.percent);
-          },
+          rawTitle,
+          (p) => this.showProgress(p.status, p.percent),
           this.activeAbortController.signal
         );
-
-        this.showToast('Download succesvol voltooid!');
+        this.showToast('Download voltooid!');
         setTimeout(() => this.hideProgress(), 2500);
       } catch (err) {
         this.hideProgress();
         this.showToast(`Fout: ${err.message}`);
       }
-    } else if (stream.type === 'direct') {
+    } else {
       chrome.runtime.sendMessage(
-        {
-          action: 'DOWNLOAD_DIRECT',
-          url: stream.url,
-          filename: `${filename}.mp4`
-        },
+        { action: 'DOWNLOAD_DIRECT', url: stream.url, filename: `${rawTitle}.mp4` },
         (res) => {
           if (res && res.success) {
             this.showToast('Download gestart via browser!');
@@ -403,82 +306,76 @@ class PopupController {
           }
         }
       );
-    } else if (stream.type === 'blob') {
-      try {
-        this.showProgress('Blob ophalen...', 50);
-        const res = await fetch(stream.url);
-        const blob = await res.blob();
-        await HLSDownloaderEngine.saveBlob(blob, `${filename}.mp4`);
-        this.hideProgress();
-        this.showToast('Blob video opgeslagen!');
-      } catch {
-        this.hideProgress();
-        this.showToast('Kon blob niet rechtstreeks downloaden.');
-        window.open(stream.url, '_blank');
-      }
-    } else {
-      this.showToast(`Formaat ${stream.type} wordt geopend...`);
-      window.open(stream.url, '_blank');
     }
   }
 
   /**
-   * Updates and reveals the active download progress card.
-   * @param {string} status - Status message
-   * @param {number} percent - Progress percentage (0 - 100)
+   * Handles manual URL download.
    */
-  showProgress(status, percent) {
-    this.elements.progressSection.classList.remove('progress-card--hidden');
-    this.elements.progressStatusLabel.textContent = status;
-    this.elements.progressPercentLabel.textContent = `${percent}%`;
-    this.elements.progressBarFill.style.width = `${percent}%`;
+  async handleManualDownload() {
+    const url = this.elements.manualUrlInput.value.trim();
+    if (!url) return;
+    this.elements.manualUrlInput.value = '';
+
+    const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
+    if (isYouTube) {
+      await this.handleYouTubeTab(url);
+    } else {
+      this.startStandardDownload({ url: url, type: url.includes('.m3u8') ? 'hls' : 'direct', title: 'Video' });
+    }
   }
 
   /**
-   * Hides the active download progress card.
+   * Clears tab streams.
    */
+  handleClearStreams() {
+    if (!this.activeTab) return;
+    chrome.runtime.sendMessage({ action: 'CLEAR_TAB_STREAMS', tabId: this.activeTab.id }, () => {
+      this.streams = [];
+      this.filteredStreams = [];
+      this.renderStandardStreams();
+      this.showToast('Lijst gewist');
+    });
+  }
+
+  /**
+   * Progress card update.
+   */
+  showProgress(status, percent, speed = '') {
+    this.elements.progressSection.classList.remove('progress-card--hidden');
+    this.elements.progressStatusLabel.textContent = status;
+    this.elements.progressPercentLabel.textContent = `${Math.round(percent)}%`;
+    this.elements.progressBarFill.style.width = `${percent}%`;
+    this.elements.progressSpeedLabel.textContent = speed;
+  }
+
   hideProgress() {
     this.elements.progressSection.classList.add('progress-card--hidden');
     this.elements.progressBarFill.style.width = '0%';
+    this.elements.progressSpeedLabel.textContent = '';
   }
 
-  /**
-   * Cancels the active stream download if running.
-   */
   cancelActiveDownload() {
+    if (this.stopPolling) {
+      this.stopPolling();
+      this.stopPolling = null;
+    }
     if (this.activeAbortController) {
       this.activeAbortController.abort();
-      this.hideProgress();
-      this.showToast('Download geannuleerd.');
+      this.activeAbortController = null;
     }
+    this.hideProgress();
+    this.showToast('Download geannuleerd.');
   }
 
-  /**
-   * Shows a brief toast feedback notification.
-   * @param {string} message - Message text
-   */
-  showToast(message) {
-    this.elements.toast.textContent = message;
+  showToast(msg) {
+    this.elements.toast.textContent = msg;
     this.elements.toast.classList.remove('toast--hidden');
     clearTimeout(this._toastTimer);
-    this._toastTimer = setTimeout(() => {
-      this.elements.toast.classList.add('toast--hidden');
-    }, 2800);
-  }
-
-  /**
-   * Utility to safely escape HTML string values.
-   * @param {string} str - Raw string
-   * @returns {string} Escaped string
-   */
-  escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str || '';
-    return div.innerHTML;
+    this._toastTimer = setTimeout(() => this.elements.toast.classList.add('toast--hidden'), 3000);
   }
 }
 
-// Instantiate controller when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-  new PopupController();
+  new PopupOrchestrator();
 });

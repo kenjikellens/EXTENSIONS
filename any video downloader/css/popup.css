@@ -1,8 +1,8 @@
 /**
  * @file popup.css
  * @description Minimalist dark & light mode stylesheet for Any Video Downloader popup.
- * Zero extraneous colors except for a Green Download button and a Red Delete List button.
- * Adheres to DRY OOCSS principles and strict container-padding rules.
+ * Strictly adheres to user requirements: zero extraneous colors except for a Green Download button
+ * and a Red Delete List button. Follows DRY OOCSS base-modifier architecture.
  */
 
 /* ==========================================================================
@@ -75,7 +75,7 @@ body.theme-light {
 
 body.avd-app {
   width: 400px;
-  min-height: 500px;
+  min-height: 480px;
   max-height: 580px;
   background-color: var(--bg-app);
   color: var(--text-main);
@@ -90,12 +90,9 @@ body.avd-app {
 }
 
 /* ==========================================================================
-   2. APP HEADER & CONTEXT BAR
+   2. APP HEADER
    ========================================================================== */
 
-/**
- * Top branding header with extension logo and action controls.
- */
 .app-header {
   display: flex;
   align-items: center;
@@ -146,44 +143,223 @@ body.avd-app {
   gap: 6px;
 }
 
-/**
- * Minimal page context strip.
- */
-.page-context {
+/* ==========================================================================
+   3. VIDEO INFO CARD
+   ========================================================================== */
+
+.video-info-card {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 14px;
+  gap: 10px;
+  padding: 10px 14px;
   background-color: var(--bg-surface-elevated);
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.page-context__icon {
+.video-info-card--hidden {
+  display: none !important;
+}
+
+.video-info-card__thumb {
+  width: 60px;
+  height: 38px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background-color: #000;
+}
+
+.video-info-card__details {
+  flex: 1;
+  overflow: hidden;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 3px;
 }
 
-.page-context__img {
-  width: 13px;
-  height: 13px;
-  filter: var(--icon-filter-muted);
-}
-
-.page-context__title {
-  font-size: 11px;
-  color: var(--text-muted);
+.video-info-card__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 350px;
+}
+
+.video-info-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.meta-tag {
+  font-size: 10px;
+  color: var(--text-muted);
+  background-color: var(--bg-surface);
+  padding: 1px 4px;
+  border-radius: var(--radius-sm);
+}
+
+.status-pill {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+}
+
+.status-pill--online {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.status-pill--offline {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: var(--text-dim);
 }
 
 /* ==========================================================================
-   3. FILTER & SEARCH BAR
+   4. SETUP BANNER (For YouTube Helper)
+   ========================================================================== */
+
+.setup-banner {
+  margin: 10px 14px;
+  padding: 12px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.setup-banner--hidden {
+  display: none !important;
+}
+
+.setup-banner__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.setup-banner__desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.setup-banner__actions {
+  display: flex;
+  margin-top: 2px;
+}
+
+.setup-banner__steps {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+/* ==========================================================================
+   5. CATEGORY TABS & OPTION ROWS (Video / Audio / Subtitles)
+   ========================================================================== */
+
+.category-container {
+  padding: 8px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.category-container--hidden {
+  display: none !important;
+}
+
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  background-color: var(--bg-surface);
+  padding: 3px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+}
+
+.tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.tab-btn:hover {
+  color: var(--text-main);
+}
+
+.tab-btn--active {
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.tab-badge {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: var(--radius-full);
+  background-color: rgba(255, 255, 255, 0.08);
+  color: var(--text-dim);
+}
+
+.category-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.option-row__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.empty-hint {
+  text-align: center;
+  padding: 20px 0;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* ==========================================================================
+   6. FILTER & SEARCH BAR
    ========================================================================== */
 
 .filter-bar {
-  padding: 8px 14px 4px 14px;
+  padding: 6px 14px;
+}
+
+.filter-bar--hidden {
+  display: none !important;
 }
 
 .search-box {
@@ -220,12 +396,9 @@ body.avd-app {
 }
 
 /* ==========================================================================
-   4. PROGRESS CARD
+   7. PROGRESS CARD
    ========================================================================== */
 
-/**
- * Minimalist active download progress indicator.
- */
 .progress-card {
   margin: 6px 14px;
   padding: 10px 12px;
@@ -276,11 +449,17 @@ body.avd-app {
 
 .progress-card__footer {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.progress-speed {
+  font-size: 10px;
+  color: var(--text-dim);
 }
 
 /* ==========================================================================
-   5. STREAM LIST & STREAM CARDS (OOCSS Architecture)
+   8. STREAM LIST & STREAM CARDS (Standard fallback)
    ========================================================================== */
 
 .stream-container {
@@ -292,15 +471,16 @@ body.avd-app {
   gap: 8px;
 }
 
+.stream-container--hidden {
+  display: none !important;
+}
+
 .stream-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-/**
- * Minimal stream item card.
- */
 .stream-card {
   padding: 10px 12px;
   background-color: var(--bg-surface);
@@ -309,7 +489,6 @@ body.avd-app {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .stream-card:hover {
@@ -328,18 +507,16 @@ body.avd-app {
   gap: 6px;
 }
 
-.stream-card__res {
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--text-muted);
-  background-color: var(--bg-surface-elevated);
-  padding: 1px 5px;
+.status-badge {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
   border-radius: var(--radius-sm);
-}
-
-.stream-card__source {
-  font-size: 10px;
-  color: var(--text-dim);
+  background-color: var(--badge-bg);
+  color: var(--badge-text);
+  border: 1px solid var(--border-subtle);
 }
 
 .stream-card__title {
@@ -357,7 +534,6 @@ body.avd-app {
   word-break: break-all;
   max-height: 28px;
   overflow: hidden;
-  line-height: 1.3;
 }
 
 .stream-card__actions {
@@ -367,39 +543,9 @@ body.avd-app {
 }
 
 /* ==========================================================================
-   6. MONOCHROME BADGES & STATUS INDICATORS
+   9. BUTTONS (Green Download / Red Delete)
    ========================================================================== */
 
-/**
- * Base badge class (Clean monochrome neutral styling).
- */
-.status-badge {
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-  background-color: var(--badge-bg);
-  color: var(--badge-text);
-  border: 1px solid var(--border-subtle);
-}
-
-.status-badge--hls,
-.status-badge--dash,
-.status-badge--direct,
-.status-badge--blob {
-  background-color: var(--badge-bg);
-  color: var(--badge-text);
-}
-
-/* ==========================================================================
-   7. BUTTONS & CONTROLS (Green Download / Red Delete)
-   ========================================================================== */
-
-/**
- * Base Pill Button.
- */
 .pill-btn {
   display: inline-flex;
   align-items: center;
@@ -420,13 +566,9 @@ body.avd-app {
   height: 12px;
 }
 
-/**
- * Green Download Button (Primary CTA).
- */
 .pill-btn--primary {
   background-color: var(--color-download);
   color: #ffffff;
-  flex: 1;
 }
 
 .pill-btn--primary .pill-btn__img {
@@ -437,9 +579,6 @@ body.avd-app {
   background-color: var(--color-download-hover);
 }
 
-/**
- * Neutral Secondary Button (Copy URL).
- */
 .pill-btn--secondary {
   background-color: var(--bg-surface-elevated);
   border: 1px solid var(--border-subtle);
@@ -455,13 +594,6 @@ body.avd-app {
   color: var(--text-main);
 }
 
-.pill-btn--secondary:hover .pill-btn__img {
-  filter: var(--icon-filter-main);
-}
-
-/**
- * Cancel Button.
- */
 .pill-btn--danger {
   background-color: var(--bg-surface-elevated);
   color: var(--text-main);
@@ -470,22 +602,11 @@ body.avd-app {
   font-size: 11px;
 }
 
-.pill-btn--danger .pill-btn__img {
-  filter: var(--icon-filter-muted);
-}
-
 .pill-btn--danger:hover {
   background-color: var(--color-delete);
   color: #ffffff;
 }
 
-.pill-btn--danger:hover .pill-btn__img {
-  filter: brightness(0) invert(1);
-}
-
-/**
- * Base Icon Button.
- */
 .icon-btn {
   display: inline-flex;
   align-items: center;
@@ -497,7 +618,6 @@ body.avd-app {
   background-color: transparent;
   cursor: pointer;
   outline: none;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .icon-btn__img {
@@ -515,13 +635,6 @@ body.avd-app {
   background-color: var(--bg-surface-hover);
 }
 
-.icon-btn--secondary:hover .icon-btn__img {
-  filter: var(--icon-filter-main);
-}
-
-/**
- * Red Delete List Button (Strict user requirement).
- */
 .icon-btn--delete {
   background-color: var(--color-delete);
   border-color: transparent;
@@ -535,9 +648,6 @@ body.avd-app {
   background-color: var(--color-delete-hover);
 }
 
-/**
- * Base Text Input.
- */
 .text-input {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
@@ -557,10 +667,6 @@ body.avd-app {
   flex: 1;
 }
 
-/* ==========================================================================
-   8. FOOTER & MANUAL INPUT
-   ========================================================================== */
-
 .manual-input-footer {
   padding: 8px 14px;
   background-color: var(--bg-surface);
@@ -573,7 +679,7 @@ body.avd-app {
 }
 
 /* ==========================================================================
-   9. EMPTY STATE
+   10. EMPTY STATE & TOAST
    ========================================================================== */
 
 .empty-state {
@@ -609,96 +715,6 @@ body.avd-app {
   line-height: 1.3;
 }
 
-/* ==========================================================================
-   10. MODAL & TOAST
-   ========================================================================== */
-
-.modal-backdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  z-index: 100;
-}
-
-.modal-backdrop--hidden {
-  display: none !important;
-}
-
-.modal-card {
-  width: 100%;
-  max-width: 340px;
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-}
-
-.modal-card__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.modal-card__title-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.modal-card__icon {
-  width: 14px;
-  height: 14px;
-  filter: var(--icon-filter-muted);
-}
-
-.modal-card__title {
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.quality-list {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  max-height: 220px;
-  overflow-y: auto;
-}
-
-.quality-item-btn {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 7px 10px;
-  background-color: var(--bg-surface-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  color: var(--text-main);
-  font-size: 11px;
-  font-weight: 500;
-  cursor: pointer;
-  text-align: left;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
-}
-
-.quality-item-btn:hover {
-  background-color: var(--bg-surface-hover);
-  border-color: var(--border-focus);
-}
-
-/**
- * Toast Notification
- */
 .toast {
   position: fixed;
   bottom: 50px;

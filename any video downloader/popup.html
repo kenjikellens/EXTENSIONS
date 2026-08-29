@@ -26,16 +26,58 @@
     </div>
   </header>
 
-  <!-- Page Context Info -->
-  <section class="page-context">
-    <span class="page-context__icon">
-      <img src="svg/video.svg" alt="Video" class="page-context__img" />
-    </span>
-    <span id="pageTitleLabel" class="page-context__title">Huidige pagina scannen...</span>
+  <!-- Video Meta Card (YouTube & Detected Media) -->
+  <section id="videoInfoSection" class="video-info-card video-info-card--hidden">
+    <img id="videoThumbImg" src="" alt="Thumbnail" class="video-info-card__thumb" />
+    <div class="video-info-card__details">
+      <h2 id="videoTitleLabel" class="video-info-card__title">Video laden...</h2>
+      <div class="video-info-card__meta">
+        <span id="videoDurationLabel" class="meta-tag">0:00</span>
+        <span id="helperStatusPill" class="status-pill status-pill--offline">○ Helper Offline</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Helper Setup Banner (Shown when Helper is needed and offline) -->
+  <section id="setupBanner" class="setup-banner setup-banner--hidden">
+    <div class="setup-banner__header">
+      <span class="setup-banner__title">YouTube Helper Vereist</span>
+    </div>
+    <p class="setup-banner__desc">
+      YouTube splitst audio en video. Download het eenmalige portable helper-script om 1080p, 4K en MP3 te ontgrendelen:
+    </p>
+    <div class="setup-banner__actions">
+      <button id="downloadHelperBtn" class="pill-btn pill-btn--primary">
+        <img src="svg/download.svg" alt="Download" class="pill-btn__img" />
+        <span>Download Helper (.bat)</span>
+      </button>
+    </div>
+    <div class="setup-banner__steps">
+      <span>1. Klik op Download</span> &bull;
+      <span>2. Dubbelklik op start_helper.bat</span>
+    </div>
+  </section>
+
+  <!-- Categorized Tabs & Options (Video / Audio / Subtitles) -->
+  <section id="categoryContainer" class="category-container category-container--hidden">
+    <div class="tab-bar">
+      <button id="tabVideoBtn" class="tab-btn tab-btn--active">
+        <span>Video</span><span class="tab-badge">0</span>
+      </button>
+      <button id="tabAudioBtn" class="tab-btn">
+        <span>Audio</span><span class="tab-badge">0</span>
+      </button>
+      <button id="tabSubBtn" class="tab-btn">
+        <span>Ondertitels</span><span class="tab-badge">0</span>
+      </button>
+    </div>
+    <div id="categoryList" class="category-list">
+      <!-- Populated dynamically with exact available options -->
+    </div>
   </section>
 
   <!-- Search and Filter Bar -->
-  <section class="filter-bar">
+  <section id="filterBarSection" class="filter-bar">
     <div class="search-box">
       <img src="svg/search.svg" alt="Zoeken" class="search-box__icon" />
       <input
@@ -50,13 +92,14 @@
   <!-- Active Download Progress Indicator -->
   <section id="downloadProgressSection" class="progress-card progress-card--hidden">
     <div class="progress-card__header">
-      <span id="progressStatusLabel" class="progress-card__status">Segmenten downloaden...</span>
+      <span id="progressStatusLabel" class="progress-card__status">Downloaden...</span>
       <span id="progressPercentLabel" class="progress-card__percent">0%</span>
     </div>
     <div class="progress-bar-track">
       <div id="progressBarFill" class="progress-bar-fill"></div>
     </div>
     <div class="progress-card__footer">
+      <span id="progressSpeedLabel" class="progress-speed"></span>
       <button id="cancelDownloadBtn" class="pill-btn pill-btn--danger">
         <img src="svg/close.svg" alt="Annuleren" class="pill-btn__img" />
         <span>Annuleren</span>
@@ -64,8 +107,8 @@
     </div>
   </section>
 
-  <!-- Stream List Container -->
-  <main class="stream-container">
+  <!-- Standard Stream List Container (For regular streaming sites) -->
+  <main id="standardStreamContainer" class="stream-container">
     <div id="streamList" class="stream-list">
       <!-- Dynamically filled stream cards -->
     </div>
@@ -76,7 +119,7 @@
       <p class="empty-state__title">Geen video streams gedetecteerd</p>
       <p class="empty-state__subtitle">Speel een video af op de pagina of plak hieronder handmatig een URL.</p>
     </div>
-  </section>
+  </main>
 
   <!-- Manual Stream Input Section -->
   <footer class="manual-input-footer">
@@ -85,7 +128,7 @@
         type="url"
         id="manualUrlInput"
         class="text-input text-input--compact"
-        placeholder="Plak directe video / .m3u8 URL..."
+        placeholder="Plak video / .m3u8 URL..."
       />
       <button id="manualDownloadBtn" class="pill-btn pill-btn--primary">
         <img src="svg/download.svg" alt="Download" class="pill-btn__img" />
@@ -93,24 +136,6 @@
       </button>
     </div>
   </footer>
-
-  <!-- Quality Selection Modal / Dialog -->
-  <div id="qualityModal" class="modal-backdrop modal-backdrop--hidden">
-    <div class="modal-card">
-      <div class="modal-card__header">
-        <div class="modal-card__title-group">
-          <img src="svg/quality.svg" alt="Kwaliteit" class="modal-card__icon" />
-          <h2 class="modal-card__title">Kies Videokwaliteit</h2>
-        </div>
-        <button id="closeQualityModalBtn" class="icon-btn icon-btn--secondary">
-          <img src="svg/close.svg" alt="Sluiten" class="icon-btn__img" />
-        </button>
-      </div>
-      <div id="qualityList" class="quality-list">
-        <!-- Quality options populated dynamically -->
-      </div>
-    </div>
-  </div>
 
   <!-- Notification Toast -->
   <div id="toastNotification" class="toast toast--hidden"></div>

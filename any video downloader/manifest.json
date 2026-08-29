@@ -44,7 +44,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["js/injected.js", "svg/*"],
+      "resources": ["js/injected.js", "svg/*", "helper/*"],
       "matches": ["<all_urls>"]
     }
   ]

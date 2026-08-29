@@ -1,26 +1,36 @@
 @echo off
-title Kenjigames Uitgever Installeren en Icooncache Verversen
+:: Self-elevate to Administrator to install root certificate
+net session >nul 2>&1
+if %errorLevel% neq 0 (
+    echo [INFO] Vraag administrator-rechten aan...
+    powershell -Command "Start-Process '%~f0' -Verb RunAs"
+    exit /b
+)
+
+title Kenjigames Uitgever Installeren
 cd /d "%~dp0"
 
 echo =======================================================
-echo   Kenjigames - Uitgever Certificaat & Icoon Verversen
+echo   Kenjigames - Officiële Uitgever Installeren
 echo =======================================================
 echo.
 
-echo [1/2] Bezig met installeren van Kenjigames certificaat...
-certutil -user -addstore TrustedPublisher "Kenjigames.cer" >nul 2>&1
-if not errorlevel 1 (
-    echo [OK] Kenjigames succesvol toegevoegd als Vertrouwde Uitgever!
+echo [1/2] Bezig met installeren in Trusted Root & Trusted Publisher...
+certutil -addstore Root "Kenjigames.cer" >nul 2>&1
+certutil -addstore TrustedPublisher "Kenjigames.cer" >nul 2>&1
+
+if %errorLevel% equ 0 (
+    echo [OK] Kenjigames succesvol geregistreerd als Officiële Uitgever!
 ) else (
-    echo [INFO] Certificaat reeds geïnstalleerd.
+    echo [FOUT] Installatie mislukt.
 )
 
 echo.
-echo [2/2] Bezig met verversen van Windows Verkenner icooncache...
+echo [2/2] Icooncache verversen...
 ie4uinit.exe -show >nul 2>&1
 
 echo.
 echo =======================================================
-echo Klaar! AnyVideoDownloaderHelper.exe is nu 100%% vertrouwd.
+echo KLAAR! Windows SmartScreen toont nu 'Uitgever: Kenjigames'.
 echo =======================================================
 pause

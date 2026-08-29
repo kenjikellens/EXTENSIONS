@@ -41,9 +41,10 @@
     <!-- Blade 6 -->
     <path d="M0 -150 L110 -90 L40 -30 Z" fill="url(#shutterGrad)" transform="rotate(300)" />
 
-    <!-- Center Lens Core -->
-    <circle cx="0" cy="0" r="48" fill="url(#steelGrad)" stroke="#10b981" stroke-width="4" />
-    <circle cx="0" cy="0" r="22" fill="#10b981" />
-    <circle cx="0" cy="0" r="8" fill="#ffffff" />
+    <!-- Center Lens Disc -->
+    <circle cx="0" cy="0" r="52" fill="url(#steelGrad)" stroke="#10b981" stroke-width="4" />
+
+    <!-- Pure Emerald Green Play Button -->
+    <path d="M-12 -24 C-12 -27 -8 -29 -5 -27 L24 -4 C27 -2 27 2 24 4 L-5 27 C-8 29 -12 27 -12 24 Z" fill="#10b981" />
   </g>
 </svg>

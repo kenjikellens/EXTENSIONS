@@ -22,17 +22,17 @@
     "default_popup": "popup.html",
     "default_title": "Any Video Downloader",
     "default_icon": {
-      "16": "svg/icon.svg",
-      "32": "svg/icon.svg",
-      "48": "svg/icon.svg",
-      "128": "svg/icon.svg"
+      "16": "svg/icon.png",
+      "32": "svg/icon.png",
+      "48": "svg/icon.png",
+      "128": "svg/icon.png"
     }
   },
   "icons": {
-    "16": "svg/icon.svg",
-    "32": "svg/icon.svg",
-    "48": "svg/icon.svg",
-    "128": "svg/icon.svg"
+    "16": "svg/icon.png",
+    "32": "svg/icon.png",
+    "48": "svg/icon.png",
+    "128": "svg/icon.png"
   },
   "content_scripts": [
     {

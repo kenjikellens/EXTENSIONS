@@ -1,0 +1,273 @@
+"""
+app_gui.py - Sleek Minimalist GUI for Any Video Downloader Helper.
+Provides a modern dark-mode control panel with an ON/OFF toggle switch, live status, and log ticker.
+No black command line window.
+"""
+
+import os
+import subprocess
+import sys
+import threading
+import time
+from pathlib import Path
+import tkinter as tk
+from tkinter import messagebox
+
+# Import the core daemon manager from server.py
+from server import DaemonServerManager, ToolResolver, register_log_callback, unregister_log_callback, PORT, HOST
+
+
+class ModernHelperGUI:
+    """
+    Minimalist Dark-Mode Desktop GUI for Any Video Downloader Helper.
+    """
+
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Any Video Downloader Helper")
+        self.root.geometry("460x520")
+        self.root.minsize(440, 480)
+        self.root.configure(bg="#0b0f17")
+
+        # Set Window Icon
+        self._set_window_icon()
+
+        # Build UI Components
+        self._create_header()
+        self._create_status_card()
+        self._create_log_console()
+        self._create_footer_actions()
+
+        # Connect logging callback
+        register_log_callback(self._on_log_message)
+
+        # Handle window close cleanly
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+
+        # Auto-start server on launch
+        self._start_server()
+
+    def _set_window_icon(self):
+        """Sets native window icon from icons/icon.ico or icons/icon.png."""
+        try:
+            script_dir = Path(__file__).parent.resolve()
+            ico_path = script_dir.parent / "icons" / "icon.ico"
+            png_path = script_dir.parent / "icons" / "icon.png"
+
+            if ico_path.exists():
+                self.root.iconbitmap(default=str(ico_path))
+            elif png_path.exists():
+                icon_img = tk.PhotoImage(file=str(png_path))
+                self.root.iconphoto(True, icon_img)
+        except Exception:
+            pass
+
+    def _create_header(self):
+        """Creates top branding banner."""
+        header_frame = tk.Frame(self.root, bg="#0b0f17", pady=16)
+        header_frame.pack(fill="x", padx=20)
+
+        title_lbl = tk.Label(
+            header_frame,
+            text="Any Video Downloader",
+            font=("Segoe UI", 16, "bold"),
+            fg="#f8fafc",
+            bg="#0b0f17"
+        )
+        title_lbl.pack(anchor="w")
+
+        sub_lbl = tk.Label(
+            header_frame,
+            text="Lokale Helper Daemon • Kenjigames",
+            font=("Segoe UI", 9),
+            fg="#94a3b8",
+            bg="#0b0f17"
+        )
+        sub_lbl.pack(anchor="w")
+
+    def _create_status_card(self):
+        """Creates card with ON/OFF switch and status badge."""
+        card = tk.Frame(self.root, bg="#131b2a", padx=16, pady=16, highlightbackground="#1e293b", highlightthickness=1)
+        card.pack(fill="x", padx=20, pady=(0, 14))
+
+        # Status text indicator
+        self.status_badge = tk.Label(
+            card,
+            text="● SERVER ACTIEF (Poort 48921)",
+            font=("Segoe UI", 11, "bold"),
+            fg="#10b981",
+            bg="#131b2a"
+        )
+        self.status_badge.pack(anchor="w", pady=(0, 6))
+
+        # Dependencies sub-status
+        has_ytdlp = bool(ToolResolver.get_binary_path('yt-dlp'))
+        has_ffmpeg = bool(ToolResolver.get_binary_path('ffmpeg'))
+        dep_text = f"yt-dlp: {'✓ Gereed' if has_ytdlp else '⚠ Auto-download'}  •  FFmpeg: {'✓ Gereed' if has_ffmpeg else '○ Optioneel'}"
+        
+        self.dep_lbl = tk.Label(
+            card,
+            text=dep_text,
+            font=("Segoe UI", 8),
+            fg="#64748b",
+            bg="#131b2a"
+        )
+        self.dep_lbl.pack(anchor="w", pady=(0, 12))
+
+        # Large ON / OFF Toggle Button
+        self.toggle_btn = tk.Button(
+            card,
+            text="SERVER UITSCHAKELEN",
+            font=("Segoe UI", 10, "bold"),
+            bg="#10b981",
+            fg="#ffffff",
+            activebackground="#059669",
+            activeforeground="#ffffff",
+            relief="flat",
+            cursor="hand2",
+            padx=16,
+            pady=8,
+            command=self._toggle_server
+        )
+        self.toggle_btn.pack(fill="x")
+
+    def _create_log_console(self):
+        """Creates dark-mode live activity log area."""
+        log_frame = tk.Frame(self.root, bg="#0b0f17")
+        log_frame.pack(fill="both", expand=True, padx=20, pady=(0, 10))
+
+        log_title = tk.Label(
+            log_frame,
+            text="ACTIVITEITENLOGBOEK",
+            font=("Segoe UI", 8, "bold"),
+            fg="#64748b",
+            bg="#0b0f17"
+        )
+        log_title.pack(anchor="w", pady=(0, 4))
+
+        # Text Console with Scrollbar
+        console_container = tk.Frame(log_frame, bg="#080b11", highlightbackground="#1e293b", highlightthickness=1)
+        console_container.pack(fill="both", expand=True)
+
+        self.log_text = tk.Text(
+            console_container,
+            bg="#080b11",
+            fg="#94a3b8",
+            insertbackground="#ffffff",
+            font=("Consolas", 8),
+            relief="flat",
+            wrap="word",
+            state="disabled",
+            padx=8,
+            pady=8
+        )
+        self.log_text.pack(side="left", fill="both", expand=True)
+
+        scrollbar = tk.Scrollbar(console_container, command=self.log_text.yview, bg="#1e293b", relief="flat")
+        scrollbar.pack(side="right", fill="y")
+        self.log_text.config(yscrollcommand=scrollbar.set)
+
+    def _create_footer_actions(self):
+        """Creates footer utility buttons."""
+        footer_frame = tk.Frame(self.root, bg="#0b0f17")
+        footer_frame.pack(fill="x", padx=20, pady=(0, 16))
+
+        # Open Downloads button
+        open_dl_btn = tk.Button(
+            footer_frame,
+            text="📁 Downloads Map Openen",
+            font=("Segoe UI", 9),
+            bg="#1e293b",
+            fg="#e2e8f0",
+            activebackground="#334155",
+            activeforeground="#ffffff",
+            relief="flat",
+            cursor="hand2",
+            padx=12,
+            pady=6,
+            command=self._open_downloads_folder
+        )
+        open_dl_btn.pack(side="left")
+
+        # Clear logs button
+        clear_btn = tk.Button(
+            footer_frame,
+            text="Wis Log",
+            font=("Segoe UI", 9),
+            bg="#1e293b",
+            fg="#94a3b8",
+            activebackground="#334155",
+            activeforeground="#ffffff",
+            relief="flat",
+            cursor="hand2",
+            padx=10,
+            pady=6,
+            command=self._clear_logs
+        )
+        clear_btn.pack(side="right")
+
+    def _toggle_server(self):
+        """Toggles HTTP daemon server state."""
+        if DaemonServerManager.is_running():
+            self._stop_server()
+        else:
+            self._start_server()
+
+    def _start_server(self):
+        """Starts the server in background thread and updates UI."""
+        success = DaemonServerManager.start()
+        if success:
+            self.status_badge.config(text="● SERVER ACTIEF (Poort 48921)", fg="#10b981")
+            self.toggle_btn.config(text="SERVER UITSCHAKELEN", bg="#10b981", activebackground="#059669")
+        else:
+            self.status_badge.config(text="✗ STARTEN MISLUKT", fg="#ef4444")
+
+    def _stop_server(self):
+        """Stops the server and updates UI."""
+        DaemonServerManager.stop()
+        self.status_badge.config(text="○ SERVER GESTOPT", fg="#64748b")
+        self.toggle_btn.config(text="SERVER INSCHAKELEN", bg="#334155", activebackground="#475569")
+
+    def _on_log_message(self, message):
+        """Appends incoming server log line to Text widget thread-safely."""
+        def append():
+            try:
+                self.log_text.config(state="normal")
+                self.log_text.insert("end", message + "\n")
+                self.log_text.see("end")
+                self.log_text.config(state="disabled")
+            except Exception:
+                pass
+
+        self.root.after(0, append)
+
+    def _clear_logs(self):
+        """Clears the console log window."""
+        self.log_text.config(state="normal")
+        self.log_text.delete("1.0", "end")
+        self.log_text.config(state="disabled")
+
+    def _open_downloads_folder(self):
+        """Opens user Downloads folder in Windows Explorer."""
+        dl_dir = str(Path.home() / "Downloads")
+        if os.name == 'nt':
+            os.startfile(dl_dir)
+        else:
+            subprocess.Popen(['xdg-open', dl_dir])
+
+    def _on_close(self):
+        """Shuts down server on window close."""
+        unregister_log_callback(self._on_log_message)
+        DaemonServerManager.stop()
+        self.root.destroy()
+
+
+def launch_gui():
+    """Launches the Tkinter modern helper GUI."""
+    root = tk.Tk()
+    app = ModernHelperGUI(root)
+    root.mainloop()
+
+
+if __name__ == '__main__':
+    launch_gui()

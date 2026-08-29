@@ -24,6 +24,37 @@ HOST = '127.0.0.1'
 active_tasks = {}
 tasks_lock = threading.Lock()
 
+# Logging callback registry for GUI updates
+_gui_log_callbacks = []
+_gui_callbacks_lock = threading.Lock()
+
+
+def register_log_callback(callback):
+    """Registers a listener function for realtime server event logs."""
+    with _gui_callbacks_lock:
+        if callback not in _gui_log_callbacks:
+            _gui_log_callbacks.append(callback)
+
+
+def unregister_log_callback(callback):
+    """Unregisters a listener function."""
+    with _gui_callbacks_lock:
+        if callback in _gui_log_callbacks:
+            _gui_log_callbacks.remove(callback)
+
+
+def broadcast_log(msg):
+    """Broadcasts a log line to all registered UI listeners and stdout."""
+    timestamp = time.strftime("[%H:%M:%S]")
+    line = f"{timestamp} {msg}"
+    print(line)
+    with _gui_callbacks_lock:
+        for cb in _gui_log_callbacks:
+            try:
+                cb(line)
+            except Exception:
+                pass
+
 
 class ToolResolver:
     """
@@ -118,7 +149,7 @@ class FormatExtractor:
         all_subs = {**auto_captions, **subtitles_dict}
 
         subtitle_options = []
-        for lang_code, formats_list in all_subs.items():
+        for lang_code in all_subs.keys():
             name = lang_code.upper()
             if lang_code == 'nl':
                 name = 'Nederlands'
@@ -193,9 +224,11 @@ class DownloadManager:
             else:
                 fmt = "bestvideo+bestaudio/best"
             ytdlp_cmd.extend(['-f', fmt, '--merge-output-format', 'mp4'])
+            broadcast_log(f"Download gestart (Video {height or 'best'}p): {url}")
 
         elif dl_type == 'audio':
             ytdlp_cmd.extend(['-x', '--audio-format', 'mp3', '--audio-quality', f"{abr}k"])
+            broadcast_log(f"Download gestart (Audio {abr} kbps MP3): {url}")
 
         elif dl_type == 'subtitle':
             ytdlp_cmd.extend([
@@ -205,6 +238,7 @@ class DownloadManager:
                 '--sub-lang', lang,
                 '--convert-subs', 'srt'
             ])
+            broadcast_log(f"Download gestart (Ondertitels [{lang}]): {url}")
 
         ytdlp_cmd.extend(['-o', output_template, url])
 
@@ -230,8 +264,10 @@ class DownloadManager:
 
                 dest_match = dest_regex.search(line_str)
                 if dest_match:
+                    fn = os.path.basename(dest_match.group(1))
                     with tasks_lock:
-                        active_tasks[task_id]["filename"] = os.path.basename(dest_match.group(1))
+                        active_tasks[task_id]["filename"] = fn
+                    broadcast_log(f"Bestand: {fn}")
 
                 prog_match = progress_regex.search(line_str)
                 if prog_match:
@@ -249,14 +285,17 @@ class DownloadManager:
                 if process.returncode == 0:
                     active_tasks[task_id]["status"] = "completed"
                     active_tasks[task_id]["percent"] = 100
+                    broadcast_log(f"✓ Download voltooid: {active_tasks[task_id].get('filename', url)}")
                 else:
                     active_tasks[task_id]["status"] = "error"
-                    active_tasks[task_id]["error"] = f"yt-dlp afgesloten met foutcode {process.returncode}"
+                    active_tasks[task_id]["error"] = f"yt-dlp foutcode {process.returncode}"
+                    broadcast_log(f"✗ Fout bij downloaden (Code {process.returncode})")
 
         except Exception as exc:
             with tasks_lock:
                 active_tasks[task_id]["status"] = "error"
                 active_tasks[task_id]["error"] = str(exc)
+            broadcast_log(f"✗ Uitzondering: {exc}")
 
 
 class HelperHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
@@ -292,7 +331,7 @@ class HelperHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         if path == '/ping':
             self._send_json({
                 "status": "ok",
-                "version": "2.0.0",
+                "version": "2.1.0",
                 "ytdlp": bool(ToolResolver.get_binary_path('yt-dlp')),
                 "ffmpeg": bool(ToolResolver.get_binary_path('ffmpeg'))
             })
@@ -305,6 +344,7 @@ class HelperHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                 self._send_json({"error": "Geen URL meegegeven"}, 400)
                 return
 
+            broadcast_log(f"Video metadata opvragen: {target_url}")
             try:
                 cmd = [ToolResolver.get_ytdlp(), '-J', '--no-playlist', target_url]
                 res = subprocess.run(
@@ -318,13 +358,16 @@ class HelperHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                 )
 
                 if res.returncode != 0:
+                    broadcast_log(f"✗ Info ophalen mislukt voor: {target_url}")
                     self._send_json({"error": res.stderr or "Kon video info niet ophalen"}, 500)
                     return
 
                 info_dict = json.loads(res.stdout)
                 cleaned = FormatExtractor.parse_metadata(info_dict)
+                broadcast_log(f"✓ Metadata succesvol geladen: {cleaned.get('title', 'Video')}")
                 self._send_json({"success": True, "data": cleaned})
             except Exception as e:
+                broadcast_log(f"✗ Fout bij verwerken info: {e}")
                 self._send_json({"error": str(e)}, 500)
             return
 
@@ -361,17 +404,64 @@ class HelperHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         pass
 
 
-def run_server():
-    server_address = (HOST, PORT)
-    httpd = http.server.ThreadingHTTPServer(server_address, HelperHTTPRequestHandler)
-    print(f"=== Any Video Downloader Helper ===")
-    print(f"Server gestart op http://{HOST}:{PORT}")
-    print(f"Laat dit venster openstaan tijdens het downloaden.")
-    try:
-        httpd.serve_forever()
-    except KeyboardInterrupt:
-        print("\nServer gestopt.")
+class DaemonServerManager:
+    """
+    Manages the lifecycle of the ThreadingHTTPServer daemon.
+    Allows clean start, stop, and status querying.
+    """
+
+    _httpd = None
+    _thread = None
+    _is_running = False
+    _lock = threading.Lock()
+
+    @classmethod
+    def start(cls):
+        with cls._lock:
+            if cls._is_running:
+                return True
+
+            try:
+                cls._httpd = http.server.ThreadingHTTPServer((HOST, PORT), HelperHTTPRequestHandler)
+                cls._is_running = True
+                cls._thread = threading.Thread(target=cls._httpd.serve_forever, daemon=True)
+                cls._thread.start()
+                broadcast_log(f"Server succesvol gestart op http://{HOST}:{PORT}")
+                return True
+            except Exception as exc:
+                broadcast_log(f"✗ Kon server niet starten: {exc}")
+                cls._is_running = False
+                return False
+
+    @classmethod
+    def stop(cls):
+        with cls._lock:
+            if not cls._is_running or not cls._httpd:
+                return True
+
+            try:
+                cls._httpd.shutdown()
+                cls._httpd.server_close()
+                cls._is_running = False
+                broadcast_log("Server gestopt.")
+                return True
+            except Exception as exc:
+                broadcast_log(f"✗ Fout bij stoppen van server: {exc}")
+                return False
+
+    @classmethod
+    def is_running(cls):
+        with cls._lock:
+            return cls._is_running
 
 
 if __name__ == '__main__':
-    run_server()
+    DaemonServerManager.start()
+    print(f"=== Any Video Downloader Helper ===")
+    print(f"Server gestart op http://{HOST}:{PORT}")
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        DaemonServerManager.stop()
+        print("\nServer afgesloten.")

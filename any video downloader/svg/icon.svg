@@ -2,52 +2,48 @@
   <defs>
     <!-- Background Gradient -->
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f141c" />
-      <stop offset="100%" stop-color="#07090e" />
+      <stop offset="0%" stop-color="#141923" />
+      <stop offset="100%" stop-color="#0b0e14" />
     </linearGradient>
 
-    <!-- Emerald Primary Gradient -->
-    <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <!-- Emerald Shutter Blade Gradient -->
+    <linearGradient id="shutterGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#34d399" />
       <stop offset="100%" stop-color="#059669" />
     </linearGradient>
 
-    <!-- Cyan Pulse Gradient -->
-    <linearGradient id="cyanGrad" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#06b6d4" />
-      <stop offset="100%" stop-color="#10b981" />
+    <!-- Dark Steel Inner Blade Gradient -->
+    <linearGradient id="steelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0f172a" />
     </linearGradient>
-
-    <!-- Glow Filter -->
-    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="8" result="blur" />
-      <feMerge>
-        <feMergeNode in="blur" />
-        <feMergeNode in="SourceGraphic" />
-      </feMerge>
-    </filter>
   </defs>
 
-  <!-- 1. Background Squircle with Subtle Neon Border -->
-  <rect x="24" y="24" width="464" height="464" rx="108" fill="url(#bgGrad)" stroke="#10b981" stroke-width="6" stroke-opacity="0.6" />
+  <!-- Background Squircle -->
+  <rect x="24" y="24" width="464" height="464" rx="112" fill="url(#bgGrad)" stroke="#10b981" stroke-width="4" stroke-opacity="0.3" />
 
-  <!-- 2. Ambient Inner Glow Ring -->
-  <circle cx="256" cy="256" r="180" fill="none" stroke="#10b981" stroke-width="1.5" stroke-opacity="0.2" stroke-dasharray="8 6" />
+  <!-- Outer Film Reel Outer Ring -->
+  <circle cx="256" cy="256" r="176" fill="none" stroke="#10b981" stroke-width="12" stroke-opacity="0.9" />
+  <circle cx="256" cy="256" r="158" fill="none" stroke="#ffffff" stroke-width="2" stroke-opacity="0.15" />
 
-  <!-- 3. Dynamic Geometric Kinetic Stream Wings (Converging Data Ribbon Waves) -->
-  <!-- Top Outer Wave -->
-  <path d="M120 180 C180 120, 332 120, 392 180 C360 210, 310 210, 256 210 C202 210, 152 210, 120 180 Z" fill="url(#emeraldGrad)" opacity="0.9" />
+  <!-- 6 Cinematic Aperture / Shutter Blades -->
+  <g transform="translate(256, 256)">
+    <!-- Blade 1 -->
+    <path d="M0 -150 L110 -90 L40 -30 Z" fill="url(#shutterGrad)" transform="rotate(0)" />
+    <!-- Blade 2 -->
+    <path d="M0 -150 L110 -90 L40 -30 Z" fill="url(#shutterGrad)" transform="rotate(60)" />
+    <!-- Blade 3 -->
+    <path d="M0 -150 L110 -90 L40 -30 Z" fill="url(#shutterGrad)" transform="rotate(120)" />
+    <!-- Blade 4 -->
+    <path d="M0 -150 L110 -90 L40 -30 Z" fill="url(#shutterGrad)" transform="rotate(180)" />
+    <!-- Blade 5 -->
+    <path d="M0 -150 L110 -90 L40 -30 Z" fill="url(#shutterGrad)" transform="rotate(240)" />
+    <!-- Blade 6 -->
+    <path d="M0 -150 L110 -90 L40 -30 Z" fill="url(#shutterGrad)" transform="rotate(300)" />
 
-  <!-- Left Dynamic Arc Blade -->
-  <path d="M140 210 C180 270, 220 310, 256 360 C230 330, 190 280, 160 240 Z" fill="url(#cyanGrad)" opacity="0.85" />
-
-  <!-- Right Dynamic Arc Blade -->
-  <path d="M372 210 C332 270, 292 310, 256 360 C282 330, 322 280, 352 240 Z" fill="url(#emeraldGrad)" opacity="0.85" />
-
-  <!-- Intersecting Central Prism Core (Cyber Diamond / Crystal) -->
-  <polygon points="256,150 330,256 256,362 182,256" fill="#090d14" stroke="url(#emeraldGrad)" stroke-width="8" filter="url(#neonGlow)" />
-
-  <!-- Inner Glowing Energy Spark -->
-  <polygon points="256,190 300,256 256,322 212,256" fill="url(#cyanGrad)" />
-  <circle cx="256" cy="256" r="14" fill="#ffffff" />
+    <!-- Center Lens Core -->
+    <circle cx="0" cy="0" r="48" fill="url(#steelGrad)" stroke="#10b981" stroke-width="4" />
+    <circle cx="0" cy="0" r="22" fill="#10b981" />
+    <circle cx="0" cy="0" r="8" fill="#ffffff" />
+  </g>
 </svg>

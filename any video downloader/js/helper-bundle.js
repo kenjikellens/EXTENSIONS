@@ -1,6 +1,7 @@
 /**
  * @file helper-bundle.js
- * @description Generates and downloads the portable helper scripts for 1-click in-extension downloading.
+ * @description Generates a genuine standalone helper.zip package in pure vanilla JavaScript.
+ * Bypasses browser security filters that convert .bat files into .txt.
  */
 
 const SERVER_PY_CODE = `import http.server
@@ -268,7 +269,6 @@ if __name__ == '__main__':
     except KeyboardInterrupt: pass
 `;
 
-// Self-extracting start_helper.bat that automatically writes server.py if missing and runs it
 const START_BAT_CODE = `@echo off
 title Any Video Downloader Helper
 cd /d "%~dp0"
@@ -278,9 +278,9 @@ echo   Any Video Downloader - Portable Helper Server
 echo ===================================================
 echo.
 
-:: 1. If server.py does not exist, download or restore it
+:: 1. If server.py is missing, restore it from GitHub
 if not exist "server.py" (
-    echo [INFO] server.py niet gevonden. Bezig met ophalen van server.py...
+    echo [INFO] server.py niet gevonden. Bezig met downloaden...
     powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object Net.WebClient).DownloadFile('https://raw.githubusercontent.com/kenjikellens/EXTENSIONS/main/any%%20video%%20downloader/helper/server.py', 'server.py')"
 )
 
@@ -288,7 +288,7 @@ if not exist "server.py" (
 if not exist "yt-dlp.exe" (
     where yt-dlp >nul 2>&1
     if errorlevel 1 (
-        echo [INFO] yt-dlp.exe niet gevonden. Bezig met automatisch downloaden van nieuwste yt-dlp...
+        echo [INFO] yt-dlp.exe niet gevonden. Bezig met automatisch downloaden...
         powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object Net.WebClient).DownloadFile('https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe', 'yt-dlp.exe')"
         if exist "yt-dlp.exe" (
             echo [OK] yt-dlp.exe succesvol gedownload!
@@ -296,7 +296,7 @@ if not exist "yt-dlp.exe" (
     )
 )
 
-:: 3. Run server via Python launcher or Python
+:: 3. Start server
 where py >nul 2>&1
 if not errorlevel 1 (
     echo [INFO] Starten via Python Launcher...
@@ -318,46 +318,163 @@ pause
 :end
 `;
 
-export class HelperPackageBuilder {
-  /**
-   * Triggers download of start_helper.bat and server.py with explicit filenames.
-   * @returns {Promise<void>}
-   */
-  static async downloadHelperPackage() {
-    await this._downloadDataUri(START_BAT_CODE, 'start_helper.bat');
-    await new Promise((r) => setTimeout(r, 600));
-    await this._downloadDataUri(SERVER_PY_CODE, 'server.py');
+const README_TXT = `===================================================
+Any Video Downloader - Portable Helper Setup
+===================================================
+
+1. Dubbelklik op 'start_helper.bat' in deze map.
+2. Laat het zwarte venster openstaan zolang je wilt downloaden.
+3. Ga naar YouTube in je browser en open de popup om in 1080p, 4K of MP3 te downloaden!
+`;
+
+/**
+ * Pure Vanilla JavaScript ZIP File Generator.
+ */
+class MiniZipBuilder {
+  constructor() {
+    this.files = [];
   }
 
+  addFile(name, contentStr) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(contentStr);
+    this.files.push({ name, data, crc: this.crc32(data) });
+  }
+
+  crc32(buf) {
+    let crc = ~0;
+    for (let i = 0; i < buf.length; i++) {
+      crc = (crc >>> 8) ^ MiniZipBuilder.CRC_TABLE[(crc ^ buf[i]) & 0xff];
+    }
+    return (~crc) >>> 0;
+  }
+
+  buildZip() {
+    const parts = [];
+    const centralDirParts = [];
+    let offset = 0;
+
+    for (const file of this.files) {
+      const nameBytes = new TextEncoder().encode(file.name);
+
+      // Local File Header (30 bytes + name length)
+      const localHeader = new Uint8Array(30 + nameBytes.length);
+      const lv = new DataView(localHeader.buffer);
+      lv.setUint32(0, 0x04034b50, true); // Local header signature
+      lv.setUint16(4, 20, true);         // Version needed
+      lv.setUint16(6, 0, true);          // Flags
+      lv.setUint16(8, 0, true);          // Compression: 0 (Store)
+      lv.setUint16(10, 0x5a21, true);    // Time (default)
+      lv.setUint16(12, 0x5678, true);    // Date (default)
+      lv.setUint32(14, file.crc, true);  // CRC-32
+      lv.setUint32(18, file.data.length, true); // Compressed size
+      lv.setUint32(22, file.data.length, true); // Uncompressed size
+      lv.setUint16(26, nameBytes.length, true); // Name length
+      lv.setUint16(28, 0, true);         // Extra field length
+      localHeader.set(nameBytes, 30);
+
+      parts.push(localHeader);
+      parts.push(file.data);
+
+      // Central Directory Header (46 bytes + name length)
+      const centralHeader = new Uint8Array(46 + nameBytes.length);
+      const cv = new DataView(centralHeader.buffer);
+      cv.setUint32(0, 0x02014b50, true); // Central header signature
+      cv.setUint16(4, 20, true);         // Version made by
+      cv.setUint16(6, 20, true);         // Version needed
+      cv.setUint16(8, 0, true);          // Flags
+      cv.setUint16(10, 0, true);         // Compression: 0
+      cv.setUint16(12, 0x5a21, true);    // Time
+      cv.setUint16(14, 0x5678, true);    // Date
+      cv.setUint32(16, file.crc, true);  // CRC-32
+      cv.setUint32(20, file.data.length, true); // Compressed size
+      cv.setUint32(24, file.data.length, true); // Uncompressed size
+      cv.setUint16(28, nameBytes.length, true); // Name length
+      cv.setUint16(30, 0, true);         // Extra length
+      cv.setUint16(32, 0, true);         // Comment length
+      cv.setUint16(34, 0, true);         // Disk start
+      cv.setUint16(36, 0, true);         // Internal attrs
+      cv.setUint32(38, 0, true);         // External attrs
+      cv.setUint32(42, offset, true);    // Relative offset of local header
+      centralHeader.set(nameBytes, 46);
+
+      centralDirParts.push(centralHeader);
+      offset += localHeader.length + file.data.length;
+    }
+
+    const centralDirOffset = offset;
+    let centralDirSize = 0;
+    for (const c of centralDirParts) {
+      centralDirSize += c.length;
+      parts.push(c);
+    }
+
+    // End of Central Directory Record (22 bytes)
+    const eocd = new Uint8Array(22);
+    const ev = new DataView(eocd.buffer);
+    ev.setUint32(0, 0x06054b50, true); // EOCD signature
+    ev.setUint16(4, 0, true);          // Disk number
+    ev.setUint16(6, 0, true);          // Start disk
+    ev.setUint16(8, this.files.length, true);  // Total entries on disk
+    ev.setUint16(10, this.files.length, true); // Total entries
+    ev.setUint32(12, centralDirSize, true);    // Central dir size
+    ev.setUint32(16, centralDirOffset, true);  // Central dir offset
+    ev.setUint16(20, 0, true);         // Comment length
+
+    parts.push(eocd);
+    return new Blob(parts, { type: 'application/zip' });
+  }
+}
+
+// Generate CRC-32 lookup table
+MiniZipBuilder.CRC_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let k = 0; k < 8; k++) {
+      c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+    }
+    table[i] = c >>> 0;
+  }
+  return table;
+})();
+
+
+export class HelperPackageBuilder {
   /**
-   * Downloads text content using a base64 Data URI with explicit filename.
-   * @param {string} content - Raw text content
-   * @param {string} filename - Target filename
+   * Generates and downloads a clean, valid helper.zip archive.
+   * @returns {Promise<void>}
    */
-  static _downloadDataUri(content, filename) {
+  static downloadHelperPackage() {
     return new Promise((resolve) => {
-      const base64Data = btoa(unescape(encodeURIComponent(content)));
-      const dataUrl = `data:text/plain;base64,${base64Data}`;
+      const zipBuilder = new MiniZipBuilder();
+      zipBuilder.addFile('start_helper.bat', START_BAT_CODE);
+      zipBuilder.addFile('server.py', SERVER_PY_CODE);
+      zipBuilder.addFile('README.txt', README_TXT);
+
+      const zipBlob = zipBuilder.buildZip();
+      const zipUrl = URL.createObjectURL(zipBlob);
 
       if (typeof chrome !== 'undefined' && chrome.downloads && chrome.downloads.download) {
         chrome.downloads.download(
           {
-            url: dataUrl,
-            filename: filename,
-            saveAs: false,
-            conflictAction: 'overwrite'
+            url: zipUrl,
+            filename: 'AnyVideoDownloader-Helper.zip',
+            saveAs: true
           },
           () => {
+            setTimeout(() => URL.revokeObjectURL(zipUrl), 30000);
             resolve();
           }
         );
       } else {
         const a = document.createElement('a');
-        a.href = dataUrl;
-        a.download = filename;
+        a.href = zipUrl;
+        a.download = 'AnyVideoDownloader-Helper.zip';
         document.body.appendChild(a);
         a.click();
         a.remove();
+        setTimeout(() => URL.revokeObjectURL(zipUrl), 15000);
         resolve();
       }
     });

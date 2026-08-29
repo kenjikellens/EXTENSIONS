@@ -1,16 +1,53 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f141c" />
+      <stop offset="100%" stop-color="#07090e" />
+    </linearGradient>
+
+    <!-- Emerald Primary Gradient -->
     <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="0%" stop-color="#34d399" />
       <stop offset="100%" stop-color="#059669" />
     </linearGradient>
+
+    <!-- Cyan Pulse Gradient -->
+    <linearGradient id="cyanGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+
+    <!-- Glow Filter -->
+    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
   </defs>
-  <!-- Background Rounded Squircle -->
-  <rect x="6" y="6" width="116" height="116" rx="28" fill="url(#emeraldGrad)" />
-  <!-- Inner Dark Slate Overlay -->
-  <rect x="12" y="12" width="104" height="104" rx="22" fill="#0f172a" fill-opacity="0.92" />
-  <!-- Video Play Shape -->
-  <path d="M48 38 C48 35 51 33 54 35 L88 59 C91 61 91 67 88 69 L54 93 C51 95 48 93 48 90 Z" fill="white" />
-  <!-- Download Arrow Accent -->
-  <path d="M64 48 L64 78 M52 66 L64 78 L76 66" stroke="#10b981" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+
+  <!-- 1. Background Squircle with Subtle Neon Border -->
+  <rect x="24" y="24" width="464" height="464" rx="108" fill="url(#bgGrad)" stroke="#10b981" stroke-width="6" stroke-opacity="0.6" />
+
+  <!-- 2. Ambient Inner Glow Ring -->
+  <circle cx="256" cy="256" r="180" fill="none" stroke="#10b981" stroke-width="1.5" stroke-opacity="0.2" stroke-dasharray="8 6" />
+
+  <!-- 3. Dynamic Geometric Kinetic Stream Wings (Converging Data Ribbon Waves) -->
+  <!-- Top Outer Wave -->
+  <path d="M120 180 C180 120, 332 120, 392 180 C360 210, 310 210, 256 210 C202 210, 152 210, 120 180 Z" fill="url(#emeraldGrad)" opacity="0.9" />
+
+  <!-- Left Dynamic Arc Blade -->
+  <path d="M140 210 C180 270, 220 310, 256 360 C230 330, 190 280, 160 240 Z" fill="url(#cyanGrad)" opacity="0.85" />
+
+  <!-- Right Dynamic Arc Blade -->
+  <path d="M372 210 C332 270, 292 310, 256 360 C282 330, 322 280, 352 240 Z" fill="url(#emeraldGrad)" opacity="0.85" />
+
+  <!-- Intersecting Central Prism Core (Cyber Diamond / Crystal) -->
+  <polygon points="256,150 330,256 256,362 182,256" fill="#090d14" stroke="url(#emeraldGrad)" stroke-width="8" filter="url(#neonGlow)" />
+
+  <!-- Inner Glowing Energy Spark -->
+  <polygon points="256,190 300,256 256,322 212,256" fill="url(#cyanGrad)" />
+  <circle cx="256" cy="256" r="14" fill="#ffffff" />
 </svg>

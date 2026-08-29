@@ -18,15 +18,13 @@ Dit document houdt exact bij welke problemen zijn onderzocht, welke methoden zij
 
 ---
 
-### 2. `.exe` Icoon Weergave in Windows Verkenner (Python/Diskette vs Groen Cirkel-icoon)
+### 2. `.exe` Icoon Weergave in Windows Verkenner (Python/Diskette vs Wit Blaadje vs Groen Cirkel-icoon)
 * **Poging 1**: Genereren van `.ico` via standaard Pillow `img.save(..., format='ICO')`.
-  * *Resultaat*: **Mislukt in Windows Verkenner**. Pillow comprimeert sub-resoluties (16x16, 32x32, 48x48) als PNG in het `.ico`-bestand. De Windows Verkenner shell vereist voor formaten < 256x256 echter ongecomprimeerde DIB-bitmaps (`BITMAPINFOHEADER` + 32-bit BGRA). Hierdoor viel Windows terug op het standaard bootloader-icoon (de Python-diskette/slang).
-* **Poging 2**: PyInstaller compilatie via `--icon "svg/icon.ico"`.
-  * *Resultaat*: **Mislukt**. Het bestand `icon.ico` was verplaatst naar de map `icons/`, waardoor PyInstaller het pad niet vond en zijn eigen interne `runw.exe` icoon behield.
-* **Poging 3**: `.gitignore` instelling.
-  * *Resultaat*: **Ontdekte blokkade**. In `.gitignore` stond `*.exe`. Hierdoor werd het gecompileerde `.exe`-bestand lokaal wel geüpdatet, maar werd het bij `git push` nooit naar GitHub gestuurd. Dit is gecorrigeerd in commit `e9132ed`.
-* **Poging 4 (Huidige werkende methode)**: Genereren van een 100% compliant Windows DIB `.ico` (137 KB) met geldige `BITMAPINFOHEADER` structuren en compilatie via een expliciet PyInstaller `.spec`-bestand dat `MAINICON` overschrijft.
-  * *Resultaat*: **Succesvol in het binaire bestand**. Win32 PE resources tonen `RT_GROUP_ICON` ID 1 met alle 6 resoluties.
+  * *Resultaat*: **Mislukt in Windows Verkenner**. Pillow comprimeert sub-resoluties (16x16, 32x32, 48x48) als PNG in het `.ico`-bestand. De Windows Verkenner shell vereist voor formaten < 256x256 echter ongecomprimeerde DIB-bitmaps (`BITMAPINFOHEADER` + 32-bit BGRA).
+* **Poging 2**: PyInstaller compilatie via `--icon`.
+  * *Resultaat*: **Ontdekte root cause (Wit blaadje)**: Bij het bouwen op Python 3.13 met PyInstaller raakte de interne PE-structuur `GRPICONDIRENTRY` gecorrumpeerd: het veld `nID` (icon ID) werd weggeschreven met foute bit-offsets (`0x00010000` = 65536 in plaats van ID `1`). Hierdoor zocht de Windows PE-loader naar onbestaande icon-ID's en concludeerde Windows dat de icoongroep corrupt was, met een **wit leeg blaadje** als gevolg.
+* **Poging 3 (Definitieve Fix via `fix_pe_icon.py`)**: Direct patchen van de PE-binary bytearray zodat `GRPICONDIRENTRY` met exacte 14-byte Win32 alignment de geldige `nID`'s (1, 2, 3, 4, 5, 6) koppelt aan de werkelijke `RT_ICON` bronnen.
+  * *Resultaat*: **100% Succesvol**. Windows leest nu de exacte icoongroep uit het binaire bestand.
 
 ---
 

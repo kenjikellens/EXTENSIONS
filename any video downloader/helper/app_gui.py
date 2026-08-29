@@ -17,6 +17,15 @@ from tkinter import messagebox
 from server import DaemonServerManager, ToolResolver, register_log_callback, unregister_log_callback, PORT, HOST
 
 
+# Ensure Windows Taskbar links the window to Kenjigames app model ID
+if os.name == 'nt':
+    try:
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Kenjigames.AnyVideoDownloader.Helper.2.1")
+    except Exception:
+        pass
+
+
 def get_resource_path(relative_path):
     """Gets absolute path to resource, works for dev and for PyInstaller bundle."""
     try:
@@ -38,7 +47,11 @@ class ModernHelperGUI:
         self.root.minsize(440, 480)
         self.root.configure(bg="#0b0f17")
 
-        # Set Window Icon
+        # Persistent icon references to prevent Python GC from dropping taskbar icon
+        self.taskbar_icon = None
+        self.header_icon_img = None
+
+        # Set Window and Taskbar Icon
         self._set_window_icon()
 
         # Build UI Components
@@ -70,17 +83,23 @@ class ModernHelperGUI:
             for p in candidates_ico:
                 if p.exists():
                     self.root.iconbitmap(default=str(p))
+                    self.root.iconbitmap(str(p))
                     break
 
             candidates_png = [
-                get_resource_path("icon.png"),
+                get_resource_path("icons/icon48.png"),
+                get_resource_path("icon48.png"),
+                get_resource_path("icons/icon128.png"),
+                get_resource_path("icon128.png"),
                 get_resource_path("icons/icon.png"),
+                get_resource_path("icon.png"),
+                Path(__file__).parent.parent / "icons" / "icon48.png",
                 Path(__file__).parent.parent / "icons" / "icon.png"
             ]
             for p in candidates_png:
                 if p.exists():
-                    icon_img = tk.PhotoImage(file=str(p))
-                    self.root.iconphoto(True, icon_img)
+                    self.taskbar_icon = tk.PhotoImage(file=str(p))
+                    self.root.iconphoto(True, self.taskbar_icon)
                     break
         except Exception:
             pass

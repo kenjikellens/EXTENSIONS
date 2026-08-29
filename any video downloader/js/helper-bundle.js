@@ -1,53 +1,46 @@
 /**
  * @file helper-bundle.js
- * @description Directly triggers the standalone AnyVideoDownloader.exe download from the extension.
+ * @description Directly downloads the standalone AnyVideoDownloaderHelper.exe binary with genuine embedded icon.
  */
 
 export class HelperPackageBuilder {
   /**
-   * Triggers direct browser download of the standalone helper binary.
+   * Triggers direct browser download of the standalone AnyVideoDownloaderHelper.exe binary.
    * @returns {Promise<void>}
    */
-  static async downloadHelperPackage() {
-    try {
-      const timestamp = Date.now();
-      const localUrl = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL
-        ? chrome.runtime.getURL(`helper/AnyVideoDownloaderHelper.exe?v=${timestamp}`)
-        : `helper/AnyVideoDownloaderHelper.exe?v=${timestamp}`;
-
-      const githubUrl = 'https://raw.githubusercontent.com/kenjikellens/EXTENSIONS/main/any%20video%20downloader/helper/AnyVideoDownloaderHelper.exe';
-
-      let blobUrl = localUrl;
+  static downloadHelperPackage() {
+    return new Promise((resolve, reject) => {
       try {
-        const response = await fetch(localUrl);
-        if (response.ok) {
-          const blob = await response.blob();
-          blobUrl = URL.createObjectURL(blob);
-        }
-      } catch {
-        blobUrl = githubUrl;
-      }
+        // Direct clean URL without invalid query parameters that break Chromium resource loading
+        const exeUrl = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL
+          ? chrome.runtime.getURL('helper/AnyVideoDownloaderHelper.exe')
+          : 'https://raw.githubusercontent.com/kenjikellens/EXTENSIONS/main/any%20video%20downloader/helper/AnyVideoDownloaderHelper.exe';
 
-      if (typeof chrome !== 'undefined' && chrome.downloads && chrome.downloads.download) {
-        chrome.downloads.download(
-          {
-            url: blobUrl,
-            filename: 'AnyVideoDownloader.exe',
-            saveAs: false,
-            conflictAction: 'overwrite'
-          },
-          (downloadId) => {
-            if (chrome.runtime.lastError) {
-              this._fallbackAnchorDownload(blobUrl);
+        if (typeof chrome !== 'undefined' && chrome.downloads && chrome.downloads.download) {
+          chrome.downloads.download(
+            {
+              url: exeUrl,
+              filename: 'AnyVideoDownloaderHelper.exe',
+              saveAs: false,
+              conflictAction: 'overwrite'
+            },
+            (downloadId) => {
+              if (chrome.runtime.lastError) {
+                // Fallback to GitHub raw binary URL if local resource was locked
+                const githubUrl = 'https://raw.githubusercontent.com/kenjikellens/EXTENSIONS/main/any%20video%20downloader/helper/AnyVideoDownloaderHelper.exe';
+                this._fallbackAnchorDownload(githubUrl);
+              }
+              resolve();
             }
-          }
-        );
-      } else {
-        this._fallbackAnchorDownload(blobUrl);
+          );
+        } else {
+          this._fallbackAnchorDownload(exeUrl);
+          resolve();
+        }
+      } catch (err) {
+        reject(err);
       }
-    } catch (err) {
-      console.error('Download error:', err);
-    }
+    });
   }
 
   /**
@@ -57,7 +50,7 @@ export class HelperPackageBuilder {
   static _fallbackAnchorDownload(url) {
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'AnyVideoDownloader.exe';
+    a.download = 'AnyVideoDownloaderHelper.exe';
     document.body.appendChild(a);
     a.click();
     a.remove();

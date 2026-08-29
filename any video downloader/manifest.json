@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "Any Video Downloader",
+  "version": "2.0.0",
+  "description": "Detecteer, sniff en download video's, HLS (.m3u8), DASH (.mpd), MP4 en Blobs.",
+  "permissions": [
+    "webRequest",
+    "downloads",
+    "storage",
+    "tabs",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "js/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Any Video Downloader",
+    "default_icon": {
+      "16": "svg/icon.svg",
+      "32": "svg/icon.svg",
+      "48": "svg/icon.svg",
+      "128": "svg/icon.svg"
+    }
+  },
+  "icons": {
+    "16": "svg/icon.svg",
+    "32": "svg/icon.svg",
+    "48": "svg/icon.svg",
+    "128": "svg/icon.svg"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["js/content.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["js/injected.js", "svg/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

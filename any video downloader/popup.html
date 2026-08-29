@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Any Video Downloader</title>
+  <link rel="stylesheet" href="css/popup.css" />
+</head>
+<body class="avd-app">
+  <!-- Top App Header -->
+  <header class="app-header">
+    <div class="app-header__branding">
+      <img src="svg/icon.svg" alt="Logo" class="app-header__logo" />
+      <div class="app-header__title-group">
+        <h1 class="app-header__title">Any Video Downloader</h1>
+        <span class="app-header__tag">v2.0</span>
+      </div>
+    </div>
+    <div class="app-header__actions">
+      <button id="themeToggleBtn" class="icon-btn icon-btn--secondary" title="Thema wisselen (Light/Dark)">
+        <img id="themeToggleImg" src="svg/sun.svg" alt="Thema" class="icon-btn__img" />
+      </button>
+      <button id="clearStreamsBtn" class="icon-btn icon-btn--delete" title="Lijst wissen">
+        <img src="svg/trash.svg" alt="Wissen" class="icon-btn__img" />
+      </button>
+    </div>
+  </header>
+
+  <!-- Page Context Info -->
+  <section class="page-context">
+    <span class="page-context__icon">
+      <img src="svg/video.svg" alt="Video" class="page-context__img" />
+    </span>
+    <span id="pageTitleLabel" class="page-context__title">Huidige pagina scannen...</span>
+  </section>
+
+  <!-- Search and Filter Bar -->
+  <section class="filter-bar">
+    <div class="search-box">
+      <img src="svg/search.svg" alt="Zoeken" class="search-box__icon" />
+      <input
+        type="text"
+        id="searchFilterInput"
+        class="search-box__input"
+        placeholder="Filter streams op naam of type..."
+      />
+    </div>
+  </section>
+
+  <!-- Active Download Progress Indicator -->
+  <section id="downloadProgressSection" class="progress-card progress-card--hidden">
+    <div class="progress-card__header">
+      <span id="progressStatusLabel" class="progress-card__status">Segmenten downloaden...</span>
+      <span id="progressPercentLabel" class="progress-card__percent">0%</span>
+    </div>
+    <div class="progress-bar-track">
+      <div id="progressBarFill" class="progress-bar-fill"></div>
+    </div>
+    <div class="progress-card__footer">
+      <button id="cancelDownloadBtn" class="pill-btn pill-btn--danger">
+        <img src="svg/close.svg" alt="Annuleren" class="pill-btn__img" />
+        <span>Annuleren</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Stream List Container -->
+  <main class="stream-container">
+    <div id="streamList" class="stream-list">
+      <!-- Dynamically filled stream cards -->
+    </div>
+
+    <!-- Empty State -->
+    <div id="emptyState" class="empty-state">
+      <img src="svg/video.svg" alt="Geen video" class="empty-state__icon" />
+      <p class="empty-state__title">Geen video streams gedetecteerd</p>
+      <p class="empty-state__subtitle">Speel een video af op de pagina of plak hieronder handmatig een URL.</p>
+    </div>
+  </section>
+
+  <!-- Manual Stream Input Section -->
+  <footer class="manual-input-footer">
+    <div class="input-action-group">
+      <input
+        type="url"
+        id="manualUrlInput"
+        class="text-input text-input--compact"
+        placeholder="Plak directe video / .m3u8 URL..."
+      />
+      <button id="manualDownloadBtn" class="pill-btn pill-btn--primary">
+        <img src="svg/download.svg" alt="Download" class="pill-btn__img" />
+        <span>Download</span>
+      </button>
+    </div>
+  </footer>
+
+  <!-- Quality Selection Modal / Dialog -->
+  <div id="qualityModal" class="modal-backdrop modal-backdrop--hidden">
+    <div class="modal-card">
+      <div class="modal-card__header">
+        <div class="modal-card__title-group">
+          <img src="svg/quality.svg" alt="Kwaliteit" class="modal-card__icon" />
+          <h2 class="modal-card__title">Kies Videokwaliteit</h2>
+        </div>
+        <button id="closeQualityModalBtn" class="icon-btn icon-btn--secondary">
+          <img src="svg/close.svg" alt="Sluiten" class="icon-btn__img" />
+        </button>
+      </div>
+      <div id="qualityList" class="quality-list">
+        <!-- Quality options populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toastNotification" class="toast toast--hidden"></div>
+
+  <script type="module" src="js/popup.js"></script>
+</body>
+</html>

@@ -11,17 +11,18 @@ export class HelperPackageBuilder {
   static downloadHelperPackage() {
     return new Promise((resolve, reject) => {
       try {
+        const timestamp = Date.now();
         const exeUrl = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL
-          ? chrome.runtime.getURL('helper/AnyVideoDownloaderHelper.exe')
-          : 'helper/AnyVideoDownloaderHelper.exe';
+          ? chrome.runtime.getURL(`helper/AnyVideoDownloaderHelper.exe?v=${timestamp}`)
+          : `helper/AnyVideoDownloaderHelper.exe?v=${timestamp}`;
 
         if (typeof chrome !== 'undefined' && chrome.downloads && chrome.downloads.download) {
           chrome.downloads.download(
             {
               url: exeUrl,
               filename: 'AnyVideoDownloaderHelper.exe',
-              saveAs: false,
-              conflictAction: 'overwrite'
+              saveAs: true,
+              conflictAction: 'uniquify'
             },
             (downloadId) => {
               if (chrome.runtime.lastError) {

@@ -45,6 +45,7 @@ Dit document houdt exact bij welke problemen zijn onderzocht, welke methoden zij
 
 ---
 
-### 5. Console Venster vs Minimalistische Dark GUI
-* **Oud**: Zwart CMD commandoregelvenster.
-* **Nieuw**: Volledige Tkinter dark-mode desktop GUI (`helper/app_gui.py`) met ON/OFF toggle, live downloadlog en zero console (`--windowed`).
+### 6. Chrome Download-Paneel / Downloadbubbel Weergave (Regressie in Chromium)
+* **Vaststelling**: In de downloadbubbel van Google Chrome (rechtsboven in de browserbalk) wordt voor `.exe`-bestanden een generiek icoontje getoond, terwijl het bestand in de Windows Verkenner map wél een echt ingebouwd icoon heeft.
+* **Oorzaak (Chromium Bug)**: In recente Chrome-versies (vanaf v151+) heeft Google een beveiligingsregressie geïntroduceerd waarbij de download-interface van de browser weigert embedded PE-iconen van niet-vertrouwde downloads uit te pakken in de browser-UI zelf. De browser toont daar altijd een standaardplaceholder.
+* **Verificatie**: Zodra je in Chrome klikt op **"Weergeven in map"** (of de map `Downloads` opent in Windows Verkenner), leest Windows het icoon rechtstreeks uit de PE binary en wordt het echte icoon gerenderd.

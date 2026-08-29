@@ -1,9 +1,9 @@
 /**
  * @file helper-bundle.js
- * @description Bundles and generates the portable helper setup files for 1-click in-extension downloading.
+ * @description Generates and downloads the portable helper scripts for 1-click in-extension downloading.
  */
 
-const SERVER_PY_CONTENT = `import http.server
+const SERVER_PY_CODE = `import http.server
 import json
 import os
 import re
@@ -268,7 +268,8 @@ if __name__ == '__main__':
     except KeyboardInterrupt: pass
 `;
 
-const START_BAT_CONTENT = `@echo off
+// Self-extracting start_helper.bat that automatically writes server.py if missing and runs it
+const START_BAT_CODE = `@echo off
 title Any Video Downloader Helper
 cd /d "%~dp0"
 
@@ -277,10 +278,17 @@ echo   Any Video Downloader - Portable Helper Server
 echo ===================================================
 echo.
 
+:: 1. If server.py does not exist, download or restore it
+if not exist "server.py" (
+    echo [INFO] server.py niet gevonden. Bezig met ophalen van server.py...
+    powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object Net.WebClient).DownloadFile('https://raw.githubusercontent.com/kenjikellens/EXTENSIONS/main/any%%20video%%20downloader/helper/server.py', 'server.py')"
+)
+
+:: 2. Check yt-dlp binary
 if not exist "yt-dlp.exe" (
     where yt-dlp >nul 2>&1
     if errorlevel 1 (
-        echo [INFO] yt-dlp.exe niet gevonden. Bezig met automatisch downloaden...
+        echo [INFO] yt-dlp.exe niet gevonden. Bezig met automatisch downloaden van nieuwste yt-dlp...
         powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object Net.WebClient).DownloadFile('https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe', 'yt-dlp.exe')"
         if exist "yt-dlp.exe" (
             echo [OK] yt-dlp.exe succesvol gedownload!
@@ -288,6 +296,7 @@ if not exist "yt-dlp.exe" (
     )
 )
 
+:: 3. Run server via Python launcher or Python
 where py >nul 2>&1
 if not errorlevel 1 (
     echo [INFO] Starten via Python Launcher...
@@ -311,45 +320,44 @@ pause
 
 export class HelperPackageBuilder {
   /**
-   * Triggers browser downloads for start_helper.bat and server.py into the user's Downloads folder.
+   * Triggers download of start_helper.bat and server.py with explicit filenames.
    * @returns {Promise<void>}
    */
   static async downloadHelperPackage() {
-    await this._downloadFile(START_BAT_CONTENT, 'AnyVideoDownloader-Helper/start_helper.bat', 'text/plain');
-    await this._downloadFile(SERVER_PY_CONTENT, 'AnyVideoDownloader-Helper/server.py', 'text/x-python');
+    await this._downloadDataUri(START_BAT_CODE, 'start_helper.bat');
+    await new Promise((r) => setTimeout(r, 600));
+    await this._downloadDataUri(SERVER_PY_CODE, 'server.py');
   }
 
   /**
-   * Helper saving text content directly to downloads via chrome.downloads or Blob link.
-   * @param {string} content - Text file content
-   * @param {string} filename - Target path in Downloads folder
-   * @param {string} mimeType - MIME type
+   * Downloads text content using a base64 Data URI with explicit filename.
+   * @param {string} content - Raw text content
+   * @param {string} filename - Target filename
    */
-  static _downloadFile(content, filename, mimeType) {
+  static _downloadDataUri(content, filename) {
     return new Promise((resolve) => {
-      const blob = new Blob([content], { type: mimeType });
-      const blobUrl = URL.createObjectURL(blob);
+      const base64Data = btoa(unescape(encodeURIComponent(content)));
+      const dataUrl = `data:text/plain;base64,${base64Data}`;
 
       if (typeof chrome !== 'undefined' && chrome.downloads && chrome.downloads.download) {
         chrome.downloads.download(
           {
-            url: blobUrl,
+            url: dataUrl,
             filename: filename,
-            saveAs: false
+            saveAs: false,
+            conflictAction: 'overwrite'
           },
           () => {
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
             resolve();
           }
         );
       } else {
         const a = document.createElement('a');
-        a.href = blobUrl;
+        a.href = dataUrl;
         a.download = filename;
         document.body.appendChild(a);
         a.click();
         a.remove();
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
         resolve();
       }
     });

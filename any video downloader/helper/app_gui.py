@@ -12,9 +12,19 @@ import time
 from pathlib import Path
 import tkinter as tk
 from tkinter import messagebox
+from PIL import Image, ImageTk
 
 # Import the core daemon manager from server.py
 from server import DaemonServerManager, ToolResolver, register_log_callback, unregister_log_callback, PORT, HOST
+
+
+def get_resource_path(relative_path):
+    """Gets absolute path to resource, works for dev and for PyInstaller bundle."""
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = Path(__file__).parent.resolve()
+    return Path(base_path) / relative_path
 
 
 class ModernHelperGUI:
@@ -25,7 +35,7 @@ class ModernHelperGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Any Video Downloader Helper")
-        self.root.geometry("460x520")
+        self.root.geometry("460x530")
         self.root.minsize(440, 480)
         self.root.configure(bg="#0b0f17")
 
@@ -50,36 +60,73 @@ class ModernHelperGUI:
     def _set_window_icon(self):
         """Sets native window icon from icons/icon.ico or icons/icon.png."""
         try:
-            script_dir = Path(__file__).parent.resolve()
-            ico_path = script_dir.parent / "icons" / "icon.ico"
-            png_path = script_dir.parent / "icons" / "icon.png"
+            # Search possible paths for icon.ico and icon.png
+            candidates_ico = [
+                get_resource_path("icon.ico"),
+                get_resource_path("icons/icon.ico"),
+                Path(__file__).parent.parent / "icons" / "icon.ico",
+                Path(sys.executable).parent / "icons" / "icon.ico",
+                Path(sys.executable).parent.parent / "icons" / "icon.ico"
+            ]
+            for p in candidates_ico:
+                if p.exists():
+                    self.root.iconbitmap(default=str(p))
+                    break
 
-            if ico_path.exists():
-                self.root.iconbitmap(default=str(ico_path))
-            elif png_path.exists():
-                icon_img = tk.PhotoImage(file=str(png_path))
-                self.root.iconphoto(True, icon_img)
+            candidates_png = [
+                get_resource_path("icon.png"),
+                get_resource_path("icons/icon.png"),
+                Path(__file__).parent.parent / "icons" / "icon.png"
+            ]
+            for p in candidates_png:
+                if p.exists():
+                    icon_img = tk.PhotoImage(file=str(p))
+                    self.root.iconphoto(True, icon_img)
+                    break
         except Exception:
             pass
 
     def _create_header(self):
-        """Creates top branding banner."""
-        header_frame = tk.Frame(self.root, bg="#0b0f17", pady=16)
+        """Creates top branding banner with the circular app icon."""
+        header_frame = tk.Frame(self.root, bg="#0b0f17", pady=14)
         header_frame.pack(fill="x", padx=20)
 
+        # Load and render the circular icon thumbnail
+        self.header_icon_img = None
+        try:
+            candidates_png = [
+                get_resource_path("icon.png"),
+                get_resource_path("icons/icon.png"),
+                Path(__file__).parent.parent / "icons" / "icon.png"
+            ]
+            for p in candidates_png:
+                if p.exists():
+                    pil_img = Image.open(str(p)).convert('RGBA').resize((40, 40), Image.Resampling.LANCZOS)
+                    self.header_icon_img = ImageTk.PhotoImage(pil_img)
+                    break
+        except Exception:
+            pass
+
+        if self.header_icon_img:
+            logo_lbl = tk.Label(header_frame, image=self.header_icon_img, bg="#0b0f17")
+            logo_lbl.pack(side="left", padx=(0, 12))
+
+        text_group = tk.Frame(header_frame, bg="#0b0f17")
+        text_group.pack(side="left", fill="y")
+
         title_lbl = tk.Label(
-            header_frame,
+            text_group,
             text="Any Video Downloader",
-            font=("Segoe UI", 16, "bold"),
+            font=("Segoe UI", 14, "bold"),
             fg="#f8fafc",
             bg="#0b0f17"
         )
         title_lbl.pack(anchor="w")
 
         sub_lbl = tk.Label(
-            header_frame,
+            text_group,
             text="Lokale Helper Daemon • Kenjigames",
-            font=("Segoe UI", 9),
+            font=("Segoe UI", 8),
             fg="#94a3b8",
             bg="#0b0f17"
         )
@@ -87,8 +134,8 @@ class ModernHelperGUI:
 
     def _create_status_card(self):
         """Creates card with ON/OFF switch and status badge."""
-        card = tk.Frame(self.root, bg="#131b2a", padx=16, pady=16, highlightbackground="#1e293b", highlightthickness=1)
-        card.pack(fill="x", padx=20, pady=(0, 14))
+        card = tk.Frame(self.root, bg="#131b2a", padx=16, pady=14, highlightbackground="#1e293b", highlightthickness=1)
+        card.pack(fill="x", padx=20, pady=(0, 12))
 
         # Status text indicator
         self.status_badge = tk.Label(
@@ -98,13 +145,13 @@ class ModernHelperGUI:
             fg="#10b981",
             bg="#131b2a"
         )
-        self.status_badge.pack(anchor="w", pady=(0, 6))
+        self.status_badge.pack(anchor="w", pady=(0, 4))
 
         # Dependencies sub-status
         has_ytdlp = bool(ToolResolver.get_binary_path('yt-dlp'))
         has_ffmpeg = bool(ToolResolver.get_binary_path('ffmpeg'))
         dep_text = f"yt-dlp: {'✓ Gereed' if has_ytdlp else '⚠ Auto-download'}  •  FFmpeg: {'✓ Gereed' if has_ffmpeg else '○ Optioneel'}"
-        
+
         self.dep_lbl = tk.Label(
             card,
             text=dep_text,
@@ -112,7 +159,7 @@ class ModernHelperGUI:
             fg="#64748b",
             bg="#131b2a"
         )
-        self.dep_lbl.pack(anchor="w", pady=(0, 12))
+        self.dep_lbl.pack(anchor="w", pady=(0, 10))
 
         # Large ON / OFF Toggle Button
         self.toggle_btn = tk.Button(
@@ -170,7 +217,7 @@ class ModernHelperGUI:
     def _create_footer_actions(self):
         """Creates footer utility buttons."""
         footer_frame = tk.Frame(self.root, bg="#0b0f17")
-        footer_frame.pack(fill="x", padx=20, pady=(0, 16))
+        footer_frame.pack(fill="x", padx=20, pady=(0, 14))
 
         # Open Downloads button
         open_dl_btn = tk.Button(

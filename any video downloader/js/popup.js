@@ -16,6 +16,7 @@ class PopupOrchestrator {
     this.filteredStreams = [];
     this.stopPolling = null;
     this.activeAbortController = null;
+    this.autoPollTimer = null;
 
     this.helperBridge = new HelperBridge();
     this.themeManager = new ThemeManager();
@@ -33,6 +34,7 @@ class PopupOrchestrator {
     this.elements = {
       // Header
       clearStreamsBtn: document.getElementById('clearStreamsBtn'),
+      refreshStatusBtn: document.getElementById('refreshStatusBtn'),
       // Video info card
       videoInfoSection: document.getElementById('videoInfoSection'),
       videoThumbImg: document.getElementById('videoThumbImg'),
@@ -42,6 +44,7 @@ class PopupOrchestrator {
       // Setup banner
       setupBanner: document.getElementById('setupBanner'),
       downloadHelperBtn: document.getElementById('downloadHelperBtn'),
+      checkHelperNowBtn: document.getElementById('checkHelperNowBtn'),
       // Categorized tab container
       categoryContainer: document.getElementById('categoryContainer'),
       tabVideoBtn: document.getElementById('tabVideoBtn'),
@@ -75,6 +78,14 @@ class PopupOrchestrator {
   bindEvents() {
     this.elements.clearStreamsBtn.addEventListener('click', () => this.handleClearStreams());
 
+    if (this.elements.refreshStatusBtn) {
+      this.elements.refreshStatusBtn.addEventListener('click', () => this.refreshCurrentView());
+    }
+
+    if (this.elements.checkHelperNowBtn) {
+      this.elements.checkHelperNowBtn.addEventListener('click', () => this.refreshCurrentView());
+    }
+
     this.elements.searchFilterInput.addEventListener('input', (e) => {
       this.filterStreams(e.target.value.trim().toLowerCase());
     });
@@ -85,6 +96,53 @@ class PopupOrchestrator {
     });
 
     this.elements.cancelDownloadBtn.addEventListener('click', () => this.cancelActiveDownload());
+  }
+
+  /**
+   * Manual refresh trigger.
+   */
+  async refreshCurrentView() {
+    this.showToast('Server status controleren...');
+    if (this.activeTab && this.activeTab.url) {
+      const isYouTube = this.activeTab.url.includes('youtube.com/watch') || this.activeTab.url.includes('youtu.be/') || this.activeTab.url.includes('youtube.com/shorts');
+      if (isYouTube) {
+        await this.handleYouTubeTab(this.activeTab.url);
+      } else {
+        this.handleStandardTab(this.activeTab.id);
+      }
+    } else {
+      await this.init();
+    }
+  }
+
+  /**
+   * Stops any running background auto-polling.
+   */
+  stopAutoPolling() {
+    if (this.autoPollTimer) {
+      clearInterval(this.autoPollTimer);
+      this.autoPollTimer = null;
+    }
+  }
+
+  /**
+   * Starts automatic polling every 3.5 seconds to auto-detect when helper comes online.
+   * @param {string} url - YouTube URL
+   */
+  startAutoPolling(url) {
+    this.stopAutoPolling();
+    this.autoPollTimer = setInterval(async () => {
+      try {
+        const health = await this.helperBridge.checkHealth();
+        if (health.online) {
+          this.stopAutoPolling();
+          this.showToast('● Helper gedetecteerd! Formaten laden...');
+          await this.handleYouTubeTab(url);
+        }
+      } catch {
+        // Still offline, keep polling silently
+      }
+    }, 3500);
   }
 
   /**
@@ -122,6 +180,7 @@ class PopupOrchestrator {
     const health = await this.helperBridge.checkHealth();
 
     if (health.online) {
+      this.stopAutoPolling();
       this.viewManager.hideSetupBanner();
       try {
         this.showProgress('Video formaten analyseren...', 10);
@@ -137,16 +196,17 @@ class PopupOrchestrator {
         this.showToast(`Fout bij laden: ${err.message}`);
       }
     } else {
-      // Helper is offline
+      // Helper is offline -> show setup banner and start automatic auto-check
       this.viewManager.renderVideoHeader({ title: this.activeTab.title || 'YouTube Video' }, false);
       this.viewManager.renderSetupBanner(async () => {
         try {
           await HelperPackageBuilder.downloadHelperPackage();
-          this.showToast('start_helper.bat gedownload naar Downloads-map!');
+          this.showToast('AnyVideoDownloaderHelper.exe gedownload!');
         } catch {
           this.showToast('Kon helper bestand niet downloaden.');
         }
       });
+      this.startAutoPolling(url);
     }
   }
 

@@ -333,20 +333,22 @@ class PopupOrchestrator {
   }
 
   /**
-   * Starts in-browser HLS or direct download for standard streaming sites.
+   * Starts in-browser HLS or direct download for standard streaming sites and updates progress.
+   * Controls active download abort signal and dispatches UI progress updates.
+   * @param {Object} stream - Stream object { url, type, title }
    */
   async startStandardDownload(stream) {
     const rawTitle = (stream.title || 'video').replace(/[/\\?%*:|"<>]/g, '_').trim();
 
     if (stream.type === 'hls') {
       this.activeAbortController = new AbortController();
-      this.showProgress('Voorbereiden...', 0);
+      this.showProgress('Voorbereiden...', 0, '');
 
       try {
         await HLSDownloaderEngine.downloadAndMergeHLS(
           stream.url,
           rawTitle,
-          (p) => this.showProgress(p.status, p.percent),
+          (p) => this.showProgress(p.status, p.percent, p.speed || ''),
           this.activeAbortController.signal
         );
         this.showToast('Download voltooid!');

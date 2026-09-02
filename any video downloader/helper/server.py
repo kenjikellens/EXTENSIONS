@@ -14,6 +14,7 @@ import sys
 import threading
 import time
 import urllib.parse
+import urllib.request
 from pathlib import Path
 
 # Server configuration
@@ -44,10 +45,21 @@ def unregister_log_callback(callback):
 
 
 def broadcast_log(msg):
-    """Broadcasts a log line to all registered UI listeners and stdout."""
+    """
+    Broadcasts an event log line safely to registered UI listeners and standard output without encoding errors.
+    Affects server console logging, GUI activity log text widget, and UI listener callbacks.
+    """
     timestamp = time.strftime("[%H:%M:%S]")
     line = f"{timestamp} {msg}"
-    print(line)
+    try:
+        if sys.stdout and hasattr(sys.stdout, 'buffer'):
+            sys.stdout.buffer.write(f"{line}\n".encode('utf-8', errors='replace'))
+            sys.stdout.flush()
+        else:
+            print(line.encode('ascii', errors='replace').decode('ascii'))
+    except Exception:
+        pass
+
     with _gui_callbacks_lock:
         for cb in _gui_log_callbacks:
             try:
@@ -61,34 +73,140 @@ class ToolResolver:
     Resolves executable paths for yt-dlp and ffmpeg, preferring local folder binaries.
     """
 
+    _download_lock = threading.Lock()
+
     @staticmethod
-    def get_binary_path(name):
+    def get_base_dir():
         """
-        Locates the binary either in the local script directory or in the system PATH.
+        Returns the root application directory whether running as a script or a frozen PyInstaller bundle.
+        Affects directory resolution for embedded binaries and config files.
         """
-        script_dir = Path(__file__).parent.resolve()
-        local_exe = script_dir / f"{name}.exe"
+        if getattr(sys, 'frozen', False):
+            return Path(sys.executable).parent.resolve()
+        return Path(__file__).parent.resolve()
+
+    @classmethod
+    def get_binary_path(cls, name):
+        """
+        Locates the requested executable binary across local directories, user Python scripts, and system PATH.
+        Affects binary resolution for external processes like yt-dlp and ffmpeg.
+        """
+        base_dir = cls.get_base_dir()
+        local_exe = base_dir / f"{name}.exe"
         if local_exe.exists():
             return str(local_exe)
 
-        which_path = shutil.which(name)
+        # Check script parent directory as well if different from base_dir
+        script_exe = Path(__file__).parent.resolve() / f"{name}.exe"
+        if script_exe.exists():
+            return str(script_exe)
+
+        # Check subfolder bin/
+        bin_sub = base_dir / "bin" / f"{name}.exe"
+        if bin_sub.exists():
+            return str(bin_sub)
+
+        # Check system PATH
+        which_path = shutil.which(name) or shutil.which(f"{name}.exe")
         if which_path:
             return which_path
 
-        # Windows py-installed yt-dlp fallback
+        # Windows py-installed yt-dlp fallback in Python Scripts directories
         if name == 'yt-dlp':
-            py_path = shutil.which('yt-dlp.exe')
-            if py_path:
-                return py_path
+            candidates = [
+                Path(sys.prefix) / "Scripts" / "yt-dlp.exe",
+                Path(sys.base_prefix) / "Scripts" / "yt-dlp.exe",
+            ]
+            local_appdata = os.environ.get('LOCALAPPDATA')
+            if local_appdata:
+                candidates.append(Path(local_appdata) / "Programs" / "Python" / "Python313" / "Scripts" / "yt-dlp.exe")
+                candidates.append(Path(local_appdata) / "Programs" / "Python" / "Python310" / "Scripts" / "yt-dlp.exe")
+                candidates.append(Path(local_appdata) / "AnyVideoDownloader" / "yt-dlp.exe")
+            appdata = os.environ.get('APPDATA')
+            if appdata:
+                candidates.append(Path(appdata) / "Python" / "Python313" / "Scripts" / "yt-dlp.exe")
+                candidates.append(Path(appdata) / "Python" / "Python310" / "Scripts" / "yt-dlp.exe")
+
+            for cand in candidates:
+                if cand.exists():
+                    return str(cand)
 
         return None
 
     @classmethod
+    def ensure_ytdlp(cls):
+        """
+        Verifies yt-dlp is available or downloads it automatically from official releases.
+        Affects the availability of yt-dlp executable for extraction and download operations.
+        """
+        existing = cls.get_binary_path('yt-dlp')
+        if existing:
+            return existing
+
+        with cls._download_lock:
+            # Re-check inside lock
+            existing = cls.get_binary_path('yt-dlp')
+            if existing:
+                return existing
+
+            base_dir = cls.get_base_dir()
+            target_path = base_dir / ('yt-dlp.exe' if os.name == 'nt' else 'yt-dlp')
+
+            # Ensure writable directory
+            try:
+                test_file = base_dir / '.write_test'
+                test_file.touch()
+                test_file.unlink()
+            except Exception:
+                appdata = os.environ.get('LOCALAPPDATA', str(Path.home()))
+                target_dir = Path(appdata) / 'AnyVideoDownloader'
+                target_dir.mkdir(parents=True, exist_ok=True)
+                target_path = target_dir / ('yt-dlp.exe' if os.name == 'nt' else 'yt-dlp')
+
+            broadcast_log("yt-dlp ontbreekt. Bezig met automatisch downloaden van de nieuwste versie...")
+            download_url = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" if os.name == 'nt' else "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp"
+
+            temp_target = target_path.with_suffix('.tmp')
+            try:
+                headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+                req = urllib.request.Request(download_url, headers=headers)
+                with urllib.request.urlopen(req, timeout=60) as resp, open(temp_target, 'wb') as out_f:
+                    shutil.copyfileobj(resp, out_f)
+
+                if os.name != 'nt':
+                    os.chmod(temp_target, 0o755)
+
+                if target_path.exists():
+                    try:
+                        target_path.unlink()
+                    except Exception:
+                        pass
+                temp_target.rename(target_path)
+                broadcast_log("✓ yt-dlp succesvol automatisch gedownload en gereed voor gebruik!")
+                return str(target_path)
+            except Exception as exc:
+                if temp_target.exists():
+                    try:
+                        temp_target.unlink()
+                    except Exception:
+                        pass
+                broadcast_log(f"✗ Automatisch downloaden van yt-dlp mislukt: {exc}")
+                return None
+
+    @classmethod
     def get_ytdlp(cls):
-        return cls.get_binary_path('yt-dlp') or 'yt-dlp'
+        """
+        Retrieves the yt-dlp executable path, attempting auto-download if not yet present.
+        Affects video format analysis and video/audio download execution.
+        """
+        return cls.get_binary_path('yt-dlp') or cls.ensure_ytdlp()
 
     @classmethod
     def get_ffmpeg_dir(cls):
+        """
+        Returns the directory containing ffmpeg binaries for audio/video muxing.
+        Affects ffmpeg-location parameter configuration for yt-dlp commands.
+        """
         ffmpeg_bin = cls.get_binary_path('ffmpeg')
         if ffmpeg_bin:
             return str(Path(ffmpeg_bin).parent)
@@ -203,16 +321,28 @@ class DownloadManager:
 
     @staticmethod
     def _run_download(task_id, params):
+        """
+        Executes a background yt-dlp download process, streaming progress and errors to the active_tasks store.
+        Affects active_tasks status, progress percentages, and GUI log broadcasting.
+        """
         url = params.get('url')
         dl_type = params.get('type', 'video')  # 'video' | 'audio' | 'subtitle'
         height = params.get('height')
         abr = params.get('abr', 320)
         lang = params.get('lang', 'en')
 
+        ytdlp_bin = ToolResolver.get_ytdlp()
+        if not ytdlp_bin or not Path(ytdlp_bin).exists():
+            with tasks_lock:
+                active_tasks[task_id]["status"] = "error"
+                active_tasks[task_id]["error"] = "yt-dlp.exe ontbreekt en kon niet automatisch worden opgehaald."
+            broadcast_log("✗ Download afgebroken: yt-dlp.exe ontbreekt")
+            return
+
         downloads_dir = str(Path.home() / 'Downloads')
         output_template = os.path.join(downloads_dir, '%(title)s.%(ext)s')
 
-        ytdlp_cmd = [ToolResolver.get_ytdlp(), '--newline', '--no-playlist']
+        ytdlp_cmd = [ytdlp_bin, '--newline', '--no-playlist']
 
         ffmpeg_dir = ToolResolver.get_ffmpeg_dir()
         if ffmpeg_dir:
@@ -291,6 +421,11 @@ class DownloadManager:
                     active_tasks[task_id]["error"] = f"yt-dlp foutcode {process.returncode}"
                     broadcast_log(f"✗ Fout bij downloaden (Code {process.returncode})")
 
+        except FileNotFoundError:
+            with tasks_lock:
+                active_tasks[task_id]["status"] = "error"
+                active_tasks[task_id]["error"] = "yt-dlp uitvoerbaar bestand niet gevonden op het systeem."
+            broadcast_log("✗ Fout: yt-dlp uitvoerbaar bestand niet gevonden.")
         except Exception as exc:
             with tasks_lock:
                 active_tasks[task_id]["status"] = "error"
@@ -323,16 +458,25 @@ class HelperHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(response_bytes)
 
     def do_GET(self):
+        """
+        Handles incoming GET requests for health check, video metadata extraction, and task status polling.
+        Affects HTTP response payloads, log callbacks, and background task queries.
+        """
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
         query = urllib.parse.parse_qs(parsed.query)
 
         # Healthcheck
         if path == '/ping':
+            has_ytdlp = bool(ToolResolver.get_binary_path('yt-dlp'))
+            if not has_ytdlp:
+                # Proactively trigger auto-download in background thread if not ready
+                threading.Thread(target=ToolResolver.ensure_ytdlp, daemon=True).start()
+
             self._send_json({
                 "status": "ok",
                 "version": "2.1.0",
-                "ytdlp": bool(ToolResolver.get_binary_path('yt-dlp')),
+                "ytdlp": has_ytdlp,
                 "ffmpeg": bool(ToolResolver.get_binary_path('ffmpeg'))
             })
             return
@@ -345,8 +489,14 @@ class HelperHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                 return
 
             broadcast_log(f"Video metadata opvragen: {target_url}")
+            ytdlp_bin = ToolResolver.get_ytdlp()
+            if not ytdlp_bin or not Path(ytdlp_bin).exists():
+                broadcast_log("✗ yt-dlp.exe ontbreekt en kon niet worden geladen.")
+                self._send_json({"error": "yt-dlp.exe ontbreekt en kon niet automatisch worden opgehaald. Controleer je internetverbinding."}, 500)
+                return
+
             try:
-                cmd = [ToolResolver.get_ytdlp(), '-J', '--no-playlist', target_url]
+                cmd = [ytdlp_bin, '-J', '--no-playlist', target_url]
                 res = subprocess.run(
                     cmd,
                     stdout=subprocess.PIPE,
@@ -366,6 +516,9 @@ class HelperHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                 cleaned = FormatExtractor.parse_metadata(info_dict)
                 broadcast_log(f"✓ Metadata succesvol geladen: {cleaned.get('title', 'Video')}")
                 self._send_json({"success": True, "data": cleaned})
+            except FileNotFoundError:
+                broadcast_log("✗ yt-dlp uitvoerbaar bestand niet gevonden.")
+                self._send_json({"error": "yt-dlp uitvoerbaar bestand niet gevonden op het systeem."}, 500)
             except Exception as e:
                 broadcast_log(f"✗ Fout bij verwerken info: {e}")
                 self._send_json({"error": str(e)}, 500)
@@ -417,21 +570,34 @@ class DaemonServerManager:
 
     @classmethod
     def start(cls):
+        """
+        Initializes and starts the HTTP daemon server in a background thread with socket reuse and retry support.
+        Affects the HTTP listener lifecycle, port binding state, and active server flag.
+        """
         with cls._lock:
             if cls._is_running:
                 return True
 
-            try:
-                cls._httpd = http.server.ThreadingHTTPServer((HOST, PORT), HelperHTTPRequestHandler)
-                cls._is_running = True
-                cls._thread = threading.Thread(target=cls._httpd.serve_forever, daemon=True)
-                cls._thread.start()
-                broadcast_log(f"Server succesvol gestart op http://{HOST}:{PORT}")
-                return True
-            except Exception as exc:
-                broadcast_log(f"✗ Kon server niet starten: {exc}")
-                cls._is_running = False
-                return False
+            for attempt in range(5):
+                try:
+                    http.server.ThreadingHTTPServer.allow_reuse_address = True
+                    cls._httpd = http.server.ThreadingHTTPServer((HOST, PORT), HelperHTTPRequestHandler)
+                    cls._is_running = True
+                    cls._thread = threading.Thread(target=cls._httpd.serve_forever, daemon=True)
+                    cls._thread.start()
+                    broadcast_log(f"Server succesvol gestart op http://{HOST}:{PORT}")
+                    return True
+                except OSError as exc:
+                    if attempt < 4:
+                        time.sleep(1)
+                        continue
+                    broadcast_log(f"✗ Kon server niet starten: {exc}")
+                    cls._is_running = False
+                    return False
+                except Exception as exc:
+                    broadcast_log(f"✗ Kon server niet starten: {exc}")
+                    cls._is_running = False
+                    return False
 
     @classmethod
     def stop(cls):

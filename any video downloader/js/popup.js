@@ -169,7 +169,8 @@ class PopupOrchestrator {
   }
 
   /**
-   * Handles YouTube tab logic: checks helper status and loads formats or setup banner.
+   * Orchestrates YouTube format loading, dependency readiness, and error presentation via the local helper bridge.
+   * Directly affects popup visibility states, progress indicators, category views, and user toasts.
    * @param {string} url - Active YouTube URL
    */
   async handleYouTubeTab(url) {
@@ -183,7 +184,8 @@ class PopupOrchestrator {
       this.stopAutoPolling();
       this.viewManager.hideSetupBanner();
       try {
-        this.showProgress('Video formaten analyseren...', 10);
+        const progressMsg = health.ytdlp ? 'Video formaten analyseren...' : 'yt-dlp component voorbereiden & analyseren...';
+        this.showProgress(progressMsg, 15);
         const data = await this.helperBridge.getVideoInfo(url);
         this.hideProgress();
 
@@ -193,7 +195,12 @@ class PopupOrchestrator {
         });
       } catch (err) {
         this.hideProgress();
-        this.showToast(`Fout bij laden: ${err.message}`);
+        const rawErr = err.message || '';
+        let displayErr = `Fout bij laden: ${rawErr}`;
+        if (rawErr.includes('WinError 2') || rawErr.includes('niet vinden') || rawErr.includes('ontbreekt')) {
+          displayErr = 'yt-dlp component wordt geïnitialiseerd of ontbreekt. Herlaad over enkele seconden.';
+        }
+        this.showToast(displayErr);
       }
     } else {
       // Helper is offline -> show setup banner and start automatic auto-check

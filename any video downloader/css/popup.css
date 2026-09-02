@@ -1,40 +1,54 @@
 /**
  * @file popup.css
- * @description Minimalist dark & light mode stylesheet for Any Video Downloader popup.
- * Strictly adheres to user requirements: zero extraneous colors except for a Green Download button
- * and a Red Delete List button. Follows DRY OOCSS base-modifier architecture.
+ * @description High-contrast minimalist dark & light mode stylesheet for Any Video Downloader popup.
+ * Strictly adheres to user requirements: zero extraneous colors except for Green Download
+ * and Red Delete buttons. Follows DRY OOCSS base-modifier architecture with crisp contrast.
  */
 
 /* ==========================================================================
-   1. DESIGN TOKENS (Dark Default & Light Mode)
+   1. DESIGN TOKENS (High-Contrast Dark Default & Light Mode)
    ========================================================================== */
 
 :root {
-  /* Minimalist Dark Mode Palette (Default) */
-  --bg-app: #0d0d0f;
-  --bg-surface: #141416;
-  --bg-surface-elevated: #1c1c20;
-  --bg-surface-hover: #26262b;
-  
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-focus: rgba(255, 255, 255, 0.25);
+  /* Minimalist High-Contrast Dark Mode Palette (Default) */
+  --bg-app: #09090b;
+  --bg-surface: #18181b;
+  --bg-surface-elevated: #27272a;
+  --bg-surface-hover: #323238;
 
-  --text-main: #f4f4f5;
-  --text-muted: #a1a1aa;
-  --text-dim: #71717a;
+  --border-subtle: rgba(255, 255, 255, 0.12);
+  --border-card: #333338;
+  --border-focus: #10b981;
 
-  /* ONLY Permitted Accent Colors */
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+
+  --text-main: #ffffff;
+  --text-muted: #cbd5e1;
+  --text-dim: #94a3b8;
+
+  /* Permitted Accent Colors */
   --color-download: #10b981;
   --color-download-hover: #059669;
   --color-delete: #ef4444;
   --color-delete-hover: #dc2626;
 
-  /* Neutral Monochrome Badges */
+  /* Badges & Navigation Tokens */
   --badge-bg: #27272a;
-  --badge-text: #e4e4e7;
+  --badge-text: #ffffff;
+  --tab-bar-bg: #121215;
+  --tab-active-bg: #27272a;
+  --tab-active-border: #3f3f46;
+  --tab-badge-bg: #3f3f46;
+  --tab-badge-text: #ffffff;
+
+  /* Status Indicators */
+  --status-offline-bg: #27272a;
+  --status-offline-text: #94a3b8;
+  --status-online-bg: rgba(16, 185, 129, 0.2);
+  --status-online-text: #34d399;
 
   /* Icon filter (light on dark) */
-  --icon-filter-muted: brightness(0) invert(0.7);
+  --icon-filter-muted: brightness(0) invert(0.8);
   --icon-filter-main: brightness(0) invert(1);
 
   /* Sizing & Radii */
@@ -42,29 +56,47 @@
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-full: 9999px;
-  
+
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
-/* Light Mode Overrides */
+/* High-contrast light mode palette overrides */
 body.theme-light {
-  --bg-app: #f8fafc;
+  --bg-app: #eef2f6;
   --bg-surface: #ffffff;
-  --bg-surface-elevated: #f1f5f9;
-  --bg-surface-hover: #e2e8f0;
-  
-  --border-subtle: #e2e8f0;
-  --border-focus: rgba(0, 0, 0, 0.3);
+  --bg-surface-elevated: #e2e8f0;
+  --bg-surface-hover: #f8fafc;
+
+  --border-subtle: #cbd5e1;
+  --border-card: #cbd5e1;
+  --border-focus: #059669;
+
+  --card-shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
 
   --text-main: #0f172a;
-  --text-muted: #475569;
-  --text-dim: #94a3b8;
+  --text-muted: #334155;
+  --text-dim: #64748b;
+
+  --color-download: #059669;
+  --color-download-hover: #047857;
+  --color-delete: #dc2626;
+  --color-delete-hover: #b91c1c;
 
   --badge-bg: #e2e8f0;
-  --badge-text: #1e293b;
+  --badge-text: #0f172a;
+  --tab-bar-bg: #e2e8f0;
+  --tab-active-bg: #ffffff;
+  --tab-active-border: #cbd5e1;
+  --tab-badge-bg: #0f172a;
+  --tab-badge-text: #ffffff;
 
-  --icon-filter-muted: brightness(0) opacity(0.6);
-  --icon-filter-main: brightness(0) opacity(0.9);
+  --status-offline-bg: #e2e8f0;
+  --status-offline-text: #475569;
+  --status-online-bg: rgba(5, 150, 105, 0.15);
+  --status-online-text: #059669;
+
+  --icon-filter-muted: brightness(0) opacity(0.75);
+  --icon-filter-main: brightness(0) opacity(0.95);
 }
 
 * {
@@ -73,6 +105,7 @@ body.theme-light {
   padding: 0;
 }
 
+/* Root container for the popup extension window */
 body.avd-app {
   width: 400px;
   min-height: 480px;
@@ -93,6 +126,7 @@ body.avd-app {
    2. APP HEADER
    ========================================================================== */
 
+/* Top branding navigation bar displaying logo, title, and action controls */
 .app-header {
   display: flex;
   align-items: center;
@@ -102,41 +136,47 @@ body.avd-app {
   border-bottom: 1px solid var(--border-subtle);
 }
 
+/* Logo and title container grouped on the left */
 .app-header__branding {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
+/* Primary application icon rendered in the header */
 .app-header__logo {
   width: 22px;
   height: 22px;
   display: block;
 }
 
+/* Title text and version tag alignment wrapper */
 .app-header__title-group {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
+/* Main title heading inside header */
 .app-header__title {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-main);
   letter-spacing: -0.2px;
 }
 
+/* Version chip tag positioned beside the main header title */
 .app-header__tag {
   font-size: 10px;
-  font-weight: 500;
-  padding: 1px 5px;
+  font-weight: 600;
+  padding: 1px 6px;
   background-color: var(--bg-surface-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  color: var(--text-muted);
+  color: var(--text-main);
 }
 
+/* Header utility buttons container for refresh, theme, and delete actions */
 .app-header__actions {
   display: flex;
   align-items: center;
@@ -147,27 +187,33 @@ body.avd-app {
    3. VIDEO INFO CARD
    ========================================================================== */
 
+/* Metadata card previewing active video thumbnail, title, duration, and daemon status */
 .video-info-card {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  background-color: var(--bg-surface-elevated);
+  background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
+  box-shadow: var(--card-shadow);
 }
 
+/* Visibility modifier to hide video info card when no video is selected */
 .video-info-card--hidden {
   display: none !important;
 }
 
+/* Video preview thumbnail image */
 .video-info-card__thumb {
-  width: 60px;
-  height: 38px;
+  width: 62px;
+  height: 40px;
   object-fit: cover;
   border-radius: var(--radius-sm);
-  background-color: #000;
+  background-color: #000000;
+  border: 1px solid var(--border-subtle);
 }
 
+/* Container for video title and metadata tags */
 .video-info-card__details {
   flex: 1;
   overflow: hidden;
@@ -176,82 +222,102 @@ body.avd-app {
   gap: 3px;
 }
 
+/* Video title heading with ellipsis truncation */
 .video-info-card__title {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+/* Row wrapper grouping duration and helper status pill */
 .video-info-card__meta {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
+/* Duration badge displayed below video title */
 .meta-tag {
   font-size: 10px;
-  color: var(--text-muted);
-  background-color: var(--bg-surface);
-  padding: 1px 4px;
+  font-weight: 600;
+  color: var(--text-main);
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  padding: 2px 6px;
   border-radius: var(--radius-sm);
 }
 
+/* Rounded status indicator pill */
 .status-pill {
   font-size: 10px;
-  font-weight: 500;
-  padding: 1px 6px;
+  font-weight: 600;
+  padding: 2px 7px;
   border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
 }
 
+/* Online helper state pill indicator */
 .status-pill--online {
-  background-color: rgba(16, 185, 129, 0.15);
-  color: #10b981;
+  background-color: var(--status-online-bg);
+  color: var(--status-online-text);
+  border: 1px solid rgba(16, 185, 129, 0.35);
 }
 
+/* Offline helper state pill indicator */
 .status-pill--offline {
-  background-color: rgba(255, 255, 255, 0.08);
-  color: var(--text-dim);
+  background-color: var(--status-offline-bg);
+  color: var(--status-offline-text);
+  border: 1px solid var(--border-subtle);
 }
 
 /* ==========================================================================
    4. SETUP BANNER (For YouTube Helper)
    ========================================================================== */
 
+/* Prominent callout card instructing user to download or launch helper */
 .setup-banner {
   margin: 10px 14px;
-  padding: 12px;
-  background-color: var(--bg-surface-elevated);
-  border: 1px solid var(--border-subtle);
+  padding: 12px 14px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-card);
   border-radius: var(--radius-md);
+  box-shadow: var(--card-shadow);
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
+/* Visibility modifier to hide setup banner */
 .setup-banner--hidden {
   display: none !important;
 }
 
+/* Banner title heading */
 .setup-banner__title {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-main);
 }
 
+/* Descriptive guidance text inside the setup banner */
 .setup-banner__desc {
   font-size: 11px;
   color: var(--text-muted);
   line-height: 1.4;
 }
 
+/* Action button row within helper setup banner */
 .setup-banner__actions {
   display: flex;
+  gap: 8px;
   margin-top: 2px;
 }
 
+/* Step-by-step instructions text under setup banner actions */
 .setup-banner__steps {
   font-size: 10px;
   color: var(--text-dim);
@@ -261,8 +327,9 @@ body.avd-app {
    5. CATEGORY TABS & OPTION ROWS (Video / Audio / Subtitles)
    ========================================================================== */
 
+/* Main scrollable section containing categorized format lists */
 .category-container {
-  padding: 8px 14px;
+  padding: 10px 14px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -270,82 +337,103 @@ body.avd-app {
   overflow-y: auto;
 }
 
+/* Visibility modifier to hide category container */
 .category-container--hidden {
   display: none !important;
 }
 
+/* Segmented tab bar container grouping Video, Audio, and Subtitles switches */
 .tab-bar {
   display: flex;
   gap: 4px;
-  background-color: var(--bg-surface);
-  padding: 3px;
+  background-color: var(--tab-bar-bg);
+  padding: 4px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-subtle);
 }
 
+/* Individual tab navigation button */
 .tab-btn {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  padding: 5px 8px;
+  gap: 6px;
+  padding: 6px 10px;
   border-radius: var(--radius-sm);
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   color: var(--text-muted);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   outline: none;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
+/* Interactive hover state for tab button */
 .tab-btn:hover {
   color: var(--text-main);
+  background-color: var(--bg-surface-hover);
 }
 
+/* Active state for currently selected tab button */
 .tab-btn--active {
-  background-color: var(--bg-surface-elevated);
+  background-color: var(--tab-active-bg);
+  border-color: var(--tab-active-border);
   color: var(--text-main);
-  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
+/* Quantity counter badge inside tab button */
 .tab-badge {
-  font-size: 9px;
-  padding: 1px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
   border-radius: var(--radius-full);
-  background-color: rgba(255, 255, 255, 0.08);
-  color: var(--text-dim);
+  background-color: var(--tab-badge-bg);
+  color: var(--tab-badge-text);
 }
 
+/* Dynamic list container housing resolution and bitrate cards */
 .category-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
   max-height: 280px;
   overflow-y: auto;
 }
 
+/* High-contrast option item card representing an available quality tier */
 .option-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px;
+  padding: 9px 12px;
   background-color: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   border-radius: var(--radius-md);
+  box-shadow: var(--card-shadow);
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+/* Hover state highlighting active option item card */
+.option-row:hover {
+  background-color: var(--bg-surface-hover);
+  border-color: var(--border-focus);
+}
+
+/* Left-hand quality label inside option item card */
 .option-row__label {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-main);
 }
 
+/* Placeholder notification when no items match the selected category */
 .empty-hint {
   text-align: center;
-  padding: 20px 0;
+  padding: 24px 0;
   font-size: 11px;
   color: var(--text-dim);
 }
@@ -354,34 +442,43 @@ body.avd-app {
    6. FILTER & SEARCH BAR
    ========================================================================== */
 
+/* Search input container wrapper */
 .filter-bar {
   padding: 6px 14px;
 }
 
+/* Visibility modifier for filter bar */
 .filter-bar--hidden {
   display: none !important;
 }
 
+/* High-contrast search input card with icon */
 .search-box {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
+  padding: 7px 11px;
   background-color: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   border-radius: var(--radius-md);
+  box-shadow: var(--card-shadow);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+/* Focused state for search box wrapper */
 .search-box:focus-within {
   border-color: var(--border-focus);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
 }
 
+/* Search lens icon inside search box */
 .search-box__icon {
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
   filter: var(--icon-filter-muted);
 }
 
+/* Native input field within search box */
 .search-box__input {
   flex: 1;
   background: transparent;
@@ -389,8 +486,10 @@ body.avd-app {
   outline: none;
   color: var(--text-main);
   font-size: 12px;
+  font-weight: 500;
 }
 
+/* Placeholder styling for search box */
 .search-box__input::placeholder {
   color: var(--text-dim);
 }
@@ -399,47 +498,56 @@ body.avd-app {
    7. PROGRESS CARD
    ========================================================================== */
 
+/* Active download status card displaying speed, ETA, and progress bar */
 .progress-card {
   margin: 6px 14px;
-  padding: 10px 12px;
-  background-color: var(--bg-surface-elevated);
-  border: 1px solid var(--border-subtle);
+  padding: 11px 13px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-card);
   border-radius: var(--radius-md);
+  box-shadow: var(--card-shadow);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
 }
 
+/* Visibility modifier to hide progress card */
 .progress-card--hidden {
   display: none !important;
 }
 
+/* Top header row of progress card */
 .progress-card__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
+/* Human-readable progress description label */
 .progress-card__status {
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-muted);
 }
 
+/* Numerical percentage readout in progress card */
 .progress-card__percent {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-main);
 }
 
+/* Background track groove for progress bar */
 .progress-bar-track {
   width: 100%;
-  height: 4px;
-  background-color: var(--border-subtle);
+  height: 5px;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-full);
   overflow: hidden;
 }
 
+/* Animated fill line indicating completed download fraction */
 .progress-bar-fill {
   width: 0%;
   height: 100%;
@@ -447,14 +555,17 @@ body.avd-app {
   transition: width 0.15s ease-out;
 }
 
+/* Bottom status row of progress card containing speed and cancel button */
 .progress-card__footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
+/* Realtime download speed and ETA readout */
 .progress-speed {
   font-size: 10px;
+  font-weight: 600;
   color: var(--text-dim);
 }
 
@@ -462,6 +573,7 @@ body.avd-app {
    8. STREAM LIST & STREAM CARDS (Standard fallback)
    ========================================================================== */
 
+/* Scrollable container for regular media sniffed from browser webRequests */
 .stream-container {
   flex: 1;
   overflow-y: auto;
@@ -471,42 +583,52 @@ body.avd-app {
   gap: 8px;
 }
 
+/* Visibility modifier to hide standard stream container */
 .stream-container--hidden {
   display: none !important;
 }
 
+/* List container for multiple stream cards */
 .stream-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
+/* High-contrast media stream card */
 .stream-card {
   padding: 10px 12px;
   background-color: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   border-radius: var(--radius-md);
+  box-shadow: var(--card-shadow);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+/* Hover state for media stream card */
 .stream-card:hover {
-  background-color: var(--bg-surface-elevated);
+  background-color: var(--bg-surface-hover);
+  border-color: var(--border-focus);
 }
 
+/* Top metadata row within stream card */
 .stream-card__top {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
+/* Badge alignment group within stream card */
 .stream-card__meta {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
+/* Uppercase stream format badge (e.g. HLS, MP4, DASH) */
 .status-badge {
   font-size: 9px;
   font-weight: 700;
@@ -519,15 +641,17 @@ body.avd-app {
   border: 1px solid var(--border-subtle);
 }
 
+/* Stream card title text */
 .stream-card__title {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+/* Raw stream URL preview label */
 .stream-card__url {
   font-size: 11px;
   color: var(--text-dim);
@@ -536,6 +660,7 @@ body.avd-app {
   overflow: hidden;
 }
 
+/* Action buttons row at the bottom of a stream card */
 .stream-card__actions {
   display: flex;
   gap: 6px;
@@ -546,133 +671,166 @@ body.avd-app {
    9. BUTTONS (Green Download / Red Delete)
    ========================================================================== */
 
+/* High-contrast pill action button */
 .pill-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  padding: 6px 12px;
+  gap: 6px;
+  padding: 6px 14px;
   border-radius: var(--radius-md);
   font-size: 12px;
   font-weight: 600;
-  border: none;
+  border: 1px solid transparent;
   cursor: pointer;
   outline: none;
-  transition: background-color 0.15s ease, opacity 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+/* Icon glyph inside pill button */
 .pill-btn__img {
   width: 12px;
   height: 12px;
 }
 
+/* Primary emerald download button */
 .pill-btn--primary {
   background-color: var(--color-download);
   color: #ffffff;
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
+/* Inverted icon filter for primary button */
 .pill-btn--primary .pill-btn__img {
   filter: brightness(0) invert(1);
 }
 
+/* Hover state for primary emerald download button */
 .pill-btn--primary:hover {
   background-color: var(--color-download-hover);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
+/* High-contrast secondary action button */
 .pill-btn--secondary {
-  background-color: var(--bg-surface-elevated);
-  border: 1px solid var(--border-subtle);
-  color: var(--text-muted);
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-card);
+  color: var(--text-main);
+  box-shadow: var(--card-shadow);
 }
 
+/* Icon filter for secondary button */
 .pill-btn--secondary .pill-btn__img {
   filter: var(--icon-filter-muted);
 }
 
+/* Hover state for secondary action button */
 .pill-btn--secondary:hover {
   background-color: var(--bg-surface-hover);
-  color: var(--text-main);
+  border-color: var(--border-focus);
 }
 
+/* Red danger cancellation button */
 .pill-btn--danger {
-  background-color: var(--bg-surface-elevated);
-  color: var(--text-main);
-  border: 1px solid var(--border-subtle);
-  padding: 4px 8px;
+  background-color: var(--color-delete);
+  color: #ffffff;
+  border: 1px solid transparent;
+  padding: 5px 10px;
   font-size: 11px;
 }
 
+/* Hover state for danger cancellation button */
 .pill-btn--danger:hover {
-  background-color: var(--color-delete);
-  color: #ffffff;
+  background-color: var(--color-delete-hover);
 }
 
+/* High-contrast icon-only button */
 .icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   background-color: transparent;
   cursor: pointer;
   outline: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+/* Icon glyph inside icon-only button */
 .icon-btn__img {
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
   filter: var(--icon-filter-muted);
 }
 
+/* Secondary icon button variant with visible borders */
 .icon-btn--secondary {
-  background-color: var(--bg-surface-elevated);
-  border-color: var(--border-subtle);
+  background-color: var(--bg-surface);
+  border-color: var(--border-card);
+  box-shadow: var(--card-shadow);
 }
 
+/* Hover state for secondary icon button */
 .icon-btn--secondary:hover {
   background-color: var(--bg-surface-hover);
+  border-color: var(--border-focus);
 }
 
+/* High-contrast solid red delete icon button */
 .icon-btn--delete {
   background-color: var(--color-delete);
-  border-color: transparent;
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
+/* Inverted icon filter for delete icon button */
 .icon-btn--delete .icon-btn__img {
   filter: brightness(0) invert(1);
 }
 
+/* Hover state for red delete icon button */
 .icon-btn--delete:hover {
   background-color: var(--color-delete-hover);
 }
 
+/* High-contrast text input field */
 .text-input {
   background-color: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   border-radius: var(--radius-md);
   color: var(--text-main);
-  padding: 7px 10px;
+  padding: 7px 11px;
   font-size: 12px;
+  font-weight: 500;
   outline: none;
   width: 100%;
+  box-shadow: var(--card-shadow);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+/* Focused state for text input field */
 .text-input:focus {
   border-color: var(--border-focus);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
 }
 
+/* Compact layout modifier for text input */
 .text-input--compact {
   flex: 1;
 }
 
+/* Manual URL input footer docked at the bottom of the popup */
 .manual-input-footer {
-  padding: 8px 14px;
+  padding: 10px 14px;
   background-color: var(--bg-surface);
   border-top: 1px solid var(--border-subtle);
 }
 
+/* Flex wrapper grouping manual URL input and download button */
 .input-action-group {
   display: flex;
   gap: 6px;
@@ -682,6 +840,7 @@ body.avd-app {
    10. EMPTY STATE & TOAST
    ========================================================================== */
 
+/* Full empty state container when no media is detected */
 .empty-state {
   display: none;
   flex-direction: column;
@@ -692,48 +851,54 @@ body.avd-app {
   gap: 8px;
 }
 
+/* Visibility modifier for empty state */
 .empty-state--visible {
   display: flex;
 }
 
+/* Icon glyph in empty state */
 .empty-state__icon {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   filter: var(--icon-filter-muted);
 }
 
+/* Primary heading text in empty state */
 .empty-state__title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
 }
 
+/* Guidance instructions in empty state */
 .empty-state__subtitle {
   font-size: 11px;
   color: var(--text-dim);
   max-width: 250px;
-  line-height: 1.3;
+  line-height: 1.4;
 }
 
+/* Floating notification toast popup */
 .toast {
   position: fixed;
-  bottom: 50px;
+  bottom: 54px;
   left: 50%;
-  margin-left: -110px;
-  width: 220px;
+  margin-left: -125px;
+  width: 250px;
   text-align: center;
   background-color: var(--bg-surface-elevated);
   color: var(--text-main);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-card);
   border-radius: var(--radius-full);
-  padding: 5px 12px;
+  padding: 6px 14px;
   font-size: 11px;
-  font-weight: 500;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   z-index: 200;
   pointer-events: none;
 }
 
+/* Visibility modifier to hide toast */
 .toast--hidden {
   display: none !important;
 }

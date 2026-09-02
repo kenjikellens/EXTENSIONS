@@ -68,6 +68,7 @@ class ModernHelperGUI:
 
         # Auto-start server on launch
         self._start_server()
+        self._ensure_dependencies_async()
 
     def _set_window_icon(self):
         """Sets native window icon from icons/icon.ico or icons/icon.png."""
@@ -170,13 +171,13 @@ class ModernHelperGUI:
         # Dependencies sub-status
         has_ytdlp = bool(ToolResolver.get_binary_path('yt-dlp'))
         has_ffmpeg = bool(ToolResolver.get_binary_path('ffmpeg'))
-        dep_text = f"yt-dlp: {'✓ Gereed' if has_ytdlp else '⚠ Auto-download'}  •  FFmpeg: {'✓ Gereed' if has_ffmpeg else '○ Optioneel'}"
+        dep_text = f"yt-dlp: {'✓ Gereed' if has_ytdlp else '⏳ Bezig met downloaden...'}  •  FFmpeg: {'✓ Gereed' if has_ffmpeg else '○ Optioneel'}"
 
         self.dep_lbl = tk.Label(
             card,
             text=dep_text,
             font=("Segoe UI", 8),
-            fg="#64748b",
+            fg="#10b981" if has_ytdlp else "#f59e0b",
             bg="#131b2a"
         )
         self.dep_lbl.pack(anchor="w", pady=(0, 10))
@@ -197,6 +198,30 @@ class ModernHelperGUI:
             command=self._toggle_server
         )
         self.toggle_btn.pack(fill="x")
+
+    def _update_dep_status(self):
+        """
+        Updates the UI dependency label with current yt-dlp and ffmpeg availability status.
+        Affects the dep_lbl text and foreground color on the main control panel.
+        """
+        has_ytdlp = bool(ToolResolver.get_binary_path('yt-dlp'))
+        has_ffmpeg = bool(ToolResolver.get_binary_path('ffmpeg'))
+        dep_text = f"yt-dlp: {'✓ Gereed' if has_ytdlp else '⏳ Bezig met downloaden...'}  •  FFmpeg: {'✓ Gereed' if has_ffmpeg else '○ Optioneel'}"
+        self.dep_lbl.config(text=dep_text, fg="#10b981" if has_ytdlp else "#f59e0b")
+
+    def _ensure_dependencies_async(self):
+        """
+        Asynchronously verifies and downloads required helper dependencies without blocking the GUI.
+        Affects background dependency resolution and triggers a GUI label update upon completion.
+        """
+        def worker():
+            ToolResolver.ensure_ytdlp()
+            try:
+                self.root.after(0, self._update_dep_status)
+            except Exception:
+                pass
+
+        threading.Thread(target=worker, daemon=True).start()
 
     def _create_log_console(self):
         """Creates dark-mode live activity log area."""

@@ -14,7 +14,7 @@ a = Analysis(
         (str(icons_dir / 'icon.png'), '.'),
         (str(icons_dir / 'icon48.png'), '.'),
     ],
-    hiddenimports=['tkinter', 'server'],
+    hiddenimports=['tkinter', 'server', 'urllib.request'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

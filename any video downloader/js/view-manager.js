@@ -1,4 +1,4 @@
-import { t } from './i18n.js';
+import { t, getLanguageDisplayName } from './i18n.js';
 
 export class ViewManager {
   constructor(elements) {
@@ -165,11 +165,16 @@ export class ViewManager {
       }
 
       items.forEach((item) => {
+        let label = item.label || `${item.abr} kbps`;
+        if (item.lang) {
+          const langName = getLanguageDisplayName(item.lang, this.currentLang);
+          label = `${item.abr} kbps (${langName})`;
+        }
         const row = document.createElement('div');
         row.className = 'option-row';
         row.innerHTML = `
           <div class="option-row__info">
-            <span class="option-row__label">${this.escapeHtml(item.label || `${item.abr} kbps`)}</span>
+            <span class="option-row__label">${this.escapeHtml(label)}</span>
           </div>
           <button class="icon-btn icon-btn--primary" title="${dlTitle}">
             <img src="svg/download.svg" alt="Download" class="icon-btn__img" />
@@ -186,12 +191,27 @@ export class ViewManager {
         return;
       }
 
-      items.forEach((item) => {
+      // Sort subtitles: current language first, then alphabetically by translated name
+      const sortedItems = [...items].sort((a, b) => {
+        const aCode = (a.lang || '').toLowerCase();
+        const bCode = (b.lang || '').toLowerCase();
+        const aIsCurrent = aCode === this.currentLang || aCode.startsWith(this.currentLang + '-');
+        const bIsCurrent = bCode === this.currentLang || bCode.startsWith(this.currentLang + '-');
+        if (aIsCurrent && !bIsCurrent) return -1;
+        if (!aIsCurrent && bIsCurrent) return 1;
+        const aName = getLanguageDisplayName(aCode, this.currentLang);
+        const bName = getLanguageDisplayName(bCode, this.currentLang);
+        return aName.localeCompare(bName, this.currentLang);
+      });
+
+      sortedItems.forEach((item) => {
+        const langCode = item.lang || '';
+        const displayName = getLanguageDisplayName(langCode, this.currentLang) || item.name || langCode.toUpperCase();
         const row = document.createElement('div');
         row.className = 'option-row';
         row.innerHTML = `
           <div class="option-row__info">
-            <span class="option-row__label">${this.escapeHtml(item.name || item.lang.toUpperCase())}</span>
+            <span class="option-row__label">${this.escapeHtml(displayName)}</span>
           </div>
           <button class="icon-btn icon-btn--primary" title="${dlTitle}">
             <img src="svg/download.svg" alt="Download" class="icon-btn__img" />

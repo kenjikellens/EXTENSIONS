@@ -16,8 +16,8 @@
   --bg-surface-elevated: #27272a;
   --bg-surface-hover: #323238;
 
-  --border-subtle: rgba(255, 255, 255, 0.12);
-  --border-card: #333338;
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-card: rgba(255, 255, 255, 0.08);
   --border-focus: #10b981;
 
   --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
@@ -67,8 +67,8 @@ body.theme-light {
   --bg-surface-elevated: #e2e8f0;
   --bg-surface-hover: #f8fafc;
 
-  --border-subtle: #cbd5e1;
-  --border-card: #cbd5e1;
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-card: rgba(0, 0, 0, 0.08);
   --border-focus: #059669;
 
   --card-shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
@@ -171,7 +171,7 @@ body.avd-app {
   font-weight: 600;
   padding: 1px 6px;
   background-color: var(--bg-surface-elevated);
-  border: 1px solid var(--border-subtle);
+  border: none;
   border-radius: var(--radius-sm);
   color: var(--text-main);
 }
@@ -194,8 +194,7 @@ body.avd-app {
   gap: 10px;
   padding: 10px 14px;
   background-color: var(--bg-surface);
-  border-bottom: 1px solid var(--border-subtle);
-  box-shadow: var(--card-shadow);
+  border-bottom: none;
 }
 
 /* Visibility modifier to hide video info card when no video is selected */
@@ -210,7 +209,8 @@ body.avd-app {
   object-fit: cover;
   border-radius: var(--radius-sm);
   background-color: #000000;
-  border: 1px solid var(--border-subtle);
+  border: none;
+  flex-shrink: 0;
 }
 
 /* Container for video title and metadata tags */
@@ -222,14 +222,19 @@ body.avd-app {
   gap: 3px;
 }
 
-/* Video title heading with ellipsis truncation */
+/* Video title heading with max 2 lines and ellipsis truncation */
 .video-info-card__title {
   font-size: 12px;
   font-weight: 700;
   color: var(--text-main);
-  white-space: nowrap;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
+  word-break: break-word;
 }
 
 /* Row wrapper grouping duration and helper status pill */
@@ -245,7 +250,7 @@ body.avd-app {
   font-weight: 600;
   color: var(--text-main);
   background-color: var(--bg-surface-elevated);
-  border: 1px solid var(--border-subtle);
+  border: none;
   padding: 2px 6px;
   border-radius: var(--radius-sm);
 }
@@ -347,9 +352,9 @@ body.avd-app {
   display: flex;
   gap: 4px;
   background-color: var(--tab-bar-bg);
-  padding: 4px;
+  padding: 3px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-subtle);
+  border: none;
 }
 
 /* Individual tab navigation button */
@@ -362,13 +367,13 @@ body.avd-app {
   padding: 6px 10px;
   border-radius: var(--radius-sm);
   background: transparent;
-  border: 1px solid transparent;
+  border: none;
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   outline: none;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 /* Interactive hover state for tab button */
@@ -380,9 +385,9 @@ body.avd-app {
 /* Active state for currently selected tab button */
 .tab-btn--active {
   background-color: var(--tab-active-bg);
-  border-color: var(--tab-active-border);
+  border: none;
   color: var(--text-main);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 /* Quantity counter badge inside tab button */
@@ -399,27 +404,22 @@ body.avd-app {
 .category-list {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 2px;
   max-height: 280px;
   overflow-y: auto;
 }
 
-/* Clean, ultra-compact flat option item row */
+/* Clean, modern borderless flat option item row with rounded hover state */
 .option-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 6px;
+  padding: 5px 8px;
   min-height: 30px;
   background-color: transparent;
   border: none;
-  border-bottom: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
   transition: background-color 0.15s ease;
-}
-
-/* Remove bottom border on the last item */
-.option-row:last-child {
-  border-bottom: none;
 }
 
 /* Hover state highlighting active flat option row */
@@ -476,10 +476,9 @@ body.avd-app {
   align-items: center;
   gap: 8px;
   padding: 7px 11px;
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-card);
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
-  box-shadow: var(--card-shadow);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -630,13 +629,13 @@ body.avd-app {
   gap: 8px;
 }
 
-/* High-contrast media stream card */
+/* Modern media stream card with subtle borderless elevation */
 .stream-card {
   padding: 10px 12px;
   background-color: var(--bg-surface);
-  border: 1px solid var(--border-card);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  box-shadow: var(--card-shadow);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
   gap: 7px;
@@ -802,23 +801,21 @@ body.avd-app {
   filter: var(--icon-filter-muted);
 }
 
-/* Secondary icon button variant with visible borders */
+/* Secondary icon button variant with sleek borderless ghost styling */
 .icon-btn--secondary {
-  background-color: var(--bg-surface);
-  border-color: var(--border-card);
-  box-shadow: var(--card-shadow);
+  background-color: transparent;
+  border: none;
 }
 
 /* Hover state for secondary icon button */
 .icon-btn--secondary:hover {
   background-color: var(--bg-surface-hover);
-  border-color: var(--border-focus);
 }
 
 /* High-contrast solid red delete icon button */
 .icon-btn--delete {
   background-color: var(--color-delete);
-  border-color: rgba(0, 0, 0, 0.12);
+  border: none;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
@@ -835,7 +832,7 @@ body.avd-app {
 /* High-contrast emerald primary download icon button */
 .icon-btn--primary {
   background-color: var(--color-download);
-  border-color: rgba(0, 0, 0, 0.12);
+  border: none;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
@@ -850,10 +847,10 @@ body.avd-app {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-/* High-contrast text input field */
+/* Modern borderless elevated text input field */
 .text-input {
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-card);
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   color: var(--text-main);
   padding: 7px 11px;
@@ -861,8 +858,7 @@ body.avd-app {
   font-weight: 500;
   outline: none;
   width: 100%;
-  box-shadow: var(--card-shadow);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
 
 /* Focused state for text input field */
@@ -876,12 +872,12 @@ body.avd-app {
   flex: 1;
 }
 
-/* Manual URL input section docked above the stream container */
+/* Manual URL input section docked below header without harsh border */
 .manual-input-section,
 .manual-input-footer {
   padding: 8px 14px;
   background-color: var(--bg-surface);
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: none;
 }
 
 /* Flex wrapper grouping manual URL input and download button */
@@ -1072,19 +1068,30 @@ body.avd-app {
   color: var(--text-dim);
 }
 
-/* Clean select dropdown */
+/* Clean select dropdown with explicit dark/light mode rendering */
 .select-input {
-  background-color: var(--bg-main);
+  background-color: var(--bg-surface-elevated);
   color: var(--text-main);
-  border: 1px solid var(--border-card);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   padding: 8px 10px;
   font-size: 12px;
   font-weight: 500;
   outline: none;
   cursor: pointer;
-  box-shadow: var(--card-shadow);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  color-scheme: dark;
+}
+
+body.theme-light .select-input {
+  color-scheme: light;
+}
+
+/* Explicit option background and text color to prevent OS/browser fallback issues */
+.select-input option {
+  background-color: var(--bg-surface-elevated);
+  color: var(--text-main);
+  padding: 6px 10px;
 }
 
 /* Focused state for select dropdown */

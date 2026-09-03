@@ -302,11 +302,7 @@ class FormatExtractor:
 
         if len(audio_languages) > 1:
             audio_options = []
-            sorted_langs = sorted(
-                list(audio_languages),
-                key=lambda l: (l not in ['nl', 'en', 'de', 'fr', 'es'], l)
-            )
-            for lang_code in sorted_langs:
+            for lang_code in sorted(list(audio_languages)):
                 lang_name = cls.LANGUAGE_MAP.get(lang_code) or cls.LANGUAGE_MAP.get(lang_code.split('-')[0]) or lang_code.upper()
                 for tier in standard_tiers:
                     audio_options.append({
@@ -317,19 +313,27 @@ class FormatExtractor:
         else:
             audio_options = [{"abr": tier, "label": f"{tier} kbps"} for tier in standard_tiers]
 
-        # 3. Extract all available subtitles
+        # 3. Extract actual working subtitles (official manual subtitles + original spoken auto-captions)
         subtitles_dict = info_dict.get('subtitles', {})
         auto_captions = info_dict.get('automatic_captions', {})
-        all_subs = {**auto_captions, **subtitles_dict}
+
+        valid_subs = {}
+        # Add all official manual subtitles uploaded by the creator (100% reliable)
+        for lang_code, fmts in subtitles_dict.items():
+            valid_subs[lang_code] = fmts
+
+        # Add original generated spoken captions (filter out 150+ blocked machine translations with tlang)
+        for lang_code, fmts in auto_captions.items():
+            if lang_code not in valid_subs:
+                is_machine_translated = any('tlang=' in f.get('url', '') for f in fmts)
+                if not is_machine_translated:
+                    valid_subs[lang_code] = fmts
 
         subtitle_options = []
-        for lang_code in all_subs.keys():
+        for lang_code in sorted(valid_subs.keys()):
             clean_code = lang_code.lower()
             name = cls.LANGUAGE_MAP.get(clean_code) or cls.LANGUAGE_MAP.get(clean_code.split('-')[0]) or lang_code.upper()
             subtitle_options.append({"lang": lang_code, "name": name})
-
-        # Sort subtitles so standard languages appear first, then alphabetically by name
-        subtitle_options.sort(key=lambda s: (s['lang'].lower() not in ['nl', 'en', 'de', 'fr', 'es'], s['name']))
 
         return {
             "title": title,
@@ -417,6 +421,8 @@ class DownloadManager:
                 '--sub-lang', lang,
                 '--convert-subs', 'srt'
             ])
+            if 'youtube.com' in url or 'youtu.be' in url:
+                ytdlp_cmd.extend(['--extractor-args', 'youtube:player_client=android'])
             broadcast_log(f"Download gestart (Ondertitels [{lang}]): {url}")
 
         ytdlp_cmd.extend(['-o', output_template, url])
@@ -437,17 +443,26 @@ class DownloadManager:
             )
 
             progress_regex = re.compile(r'\[download\]\s+(\d+\.?\d*)%\s+of\s+~?(\S+)\s+at\s+(\S+)\s+ETA\s+(\S+)')
-            dest_regex = re.compile(r'\[(?:download|Merger|ExtractAudio)\]\s+Destination:\s+(.+)')
+            dest_regex = re.compile(r'(?:Destination:\s+|Writing video subtitles to:\s+|Merging formats into\s+["\']?)([^"\'\r\n]+)')
+            err_buffer = []
+            valid_exts = ('.mp4', '.mp3', '.m4a', '.webm', '.mkv', '.srt', '.vtt')
 
             for line in process.stdout:
                 line_str = line.strip()
 
+                if "ERROR:" in line_str or "HTTP Error" in line_str:
+                    err_buffer.append(line_str)
+
                 dest_match = dest_regex.search(line_str)
                 if dest_match:
-                    fn = os.path.basename(dest_match.group(1))
-                    with tasks_lock:
-                        active_tasks[task_id]["filename"] = fn
-                    broadcast_log(f"Bestand: {fn}")
+                    raw_fn = os.path.basename(dest_match.group(1).strip())
+                    if raw_fn and any(raw_fn.endswith(ext) for ext in valid_exts) and not raw_fn.endswith('.part'):
+                        fn = raw_fn
+                        if dl_type == 'subtitle' and fn.endswith('.vtt'):
+                            fn = fn[:-4] + '.srt'
+                        with tasks_lock:
+                            active_tasks[task_id]["filename"] = fn
+                        broadcast_log(f"Bestand: {fn}")
 
                 prog_match = progress_regex.search(line_str)
                 if prog_match:
@@ -467,9 +482,10 @@ class DownloadManager:
                     active_tasks[task_id]["percent"] = 100
                     broadcast_log(f"✓ Download voltooid: {active_tasks[task_id].get('filename', url)}")
                 else:
+                    err_msg = err_buffer[-1] if err_buffer else f"yt-dlp foutcode {process.returncode}"
                     active_tasks[task_id]["status"] = "error"
-                    active_tasks[task_id]["error"] = f"yt-dlp foutcode {process.returncode}"
-                    broadcast_log(f"✗ Fout bij downloaden (Code {process.returncode})")
+                    active_tasks[task_id]["error"] = err_msg
+                    broadcast_log(f"✗ Fout bij downloaden: {err_msg}")
 
         except FileNotFoundError:
             with tasks_lock:

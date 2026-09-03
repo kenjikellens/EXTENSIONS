@@ -228,9 +228,15 @@ class PopupOrchestrator {
         const stored = await chrome.storage.local.get(['language']);
         if (stored && stored.language) {
           this.currentLanguage = stored.language;
+        } else {
+          // Dynamically detect user's browser/OS language!
+          const browserLang = (navigator.language || 'en').split('-')[0].toLowerCase();
+          const supported = ['nl', 'en', 'de', 'fr', 'es'];
+          this.currentLanguage = supported.includes(browserLang) ? browserLang : 'en';
+          await chrome.storage.local.set({ language: this.currentLanguage });
         }
       } catch {
-        // Use default 'nl'
+        this.currentLanguage = 'en';
       }
     }
 

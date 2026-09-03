@@ -247,3 +247,33 @@ export function applyI18n(lang = 'nl') {
     }
   });
 }
+
+/**
+ * Resolves full localized language name from any language code (e.g. 'nl', 'en', 'es-419', 'pt-BR', 'zh-Hans', 'sq', 'ab').
+ * Uses standard ECMAScript Intl.DisplayNames (backed by Unicode CLDR) for 100% universal, non-hardcoded language coverage.
+ * @param {string} langCode - Language code (e.g. 'nl', 'de', 'es-419', 'pt-BR', 'sq')
+ * @param {string} [targetLang='nl'] - Target display language (e.g. 'nl', 'en', 'de', 'fr', 'es')
+ * @returns {string} Full localized language name
+ */
+export function getLanguageDisplayName(langCode, targetLang = 'nl') {
+  if (!langCode) return '';
+  try {
+    const dn = new Intl.DisplayNames([targetLang, 'en'], { type: 'language' });
+    const parts = langCode.split('-');
+    let normalized = parts[0].toLowerCase();
+    if (parts[1]) {
+      normalized += '-' + (parts[1].length === 4 ? parts[1].charAt(0).toUpperCase() + parts[1].slice(1).toLowerCase() : parts[1].toUpperCase());
+    }
+    const name = dn.of(normalized) || dn.of(parts[0]);
+    if (name) {
+      return name.charAt(0).toUpperCase() + name.slice(1);
+    }
+  } catch {
+    try {
+      const dn = new Intl.DisplayNames([targetLang, 'en'], { type: 'language' });
+      const name = dn.of(langCode.split('-')[0]);
+      if (name) return name.charAt(0).toUpperCase() + name.slice(1);
+    } catch {}
+  }
+  return langCode.toUpperCase();
+}

@@ -498,7 +498,7 @@ def install_host():
             except Exception:
                 pass
 
-    manifest_exe = target_exe if target_exe.exists() else current_exe
+    manifest_exe = target_exe
 
     # Write Native Messaging Host manifest JSON
     manifest_data = {

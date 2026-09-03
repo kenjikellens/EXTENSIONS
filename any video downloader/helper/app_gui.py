@@ -48,6 +48,10 @@ class ModernHelperGUI:
     """
 
     def __init__(self, root):
+        """
+        Initializes the ModernHelperGUI window, registers Native Messaging hosts, and starts background services.
+        Affects main UI window creation, registry registration, and local HTTP server state.
+        """
         self.root = root
         self.root.title("Any Video Downloader Helper")
         self.root.geometry("460x530")
@@ -60,6 +64,17 @@ class ModernHelperGUI:
 
         # Set Window and Taskbar Icon
         self._set_window_icon()
+
+        # Perform 1-click automatic installation and registry configuration
+        is_outside_appdata = False
+        try:
+            target_dir = get_appdata_dir()
+            appdata_exe = (target_dir / "AnyVideoDownloaderHelper.exe").resolve()
+            cur_exe = Path(sys.executable).resolve() if getattr(sys, 'frozen', False) else Path(__file__).resolve()
+            is_outside_appdata = (cur_exe != appdata_exe)
+            install_host()
+        except Exception:
+            pass
 
         # Build UI Components
         self._create_header()
@@ -76,6 +91,23 @@ class ModernHelperGUI:
         # Auto-start server on launch
         self._start_server()
         self._ensure_dependencies_async()
+
+        # Show prompt if launched as installer from outside %LOCALAPPDATA%
+        if is_outside_appdata:
+            self.root.after(300, self._show_installation_success)
+
+    def _show_installation_success(self):
+        """
+        Displays a user-friendly confirmation dialog indicating that the helper has been permanently linked.
+        Affects the Tkinter message box alert.
+        """
+        messagebox.showinfo(
+            "Succesvol Gekoppeld aan Browser",
+            "✓ Any Video Downloader Helper is succesvol geïnstalleerd en gekoppeld aan Chrome, Edge en Brave!\n\n"
+            "De helper is geïnstalleerd in:\n%LOCALAPPDATA%\\AnyVideoDownloader\n\n"
+            "De helper start voortaan automatisch en stil op de achtergrond zodra je YouTube opent in je browser.\n\n"
+            "Je kunt dit venster nu gerust sluiten; de extensie blijft altijd werken."
+        )
 
     def _set_window_icon(self):
         """Sets native window icon from icons/icon.ico or icons/icon.png."""
@@ -161,19 +193,31 @@ class ModernHelperGUI:
         sub_lbl.pack(anchor="w")
 
     def _create_status_card(self):
-        """Creates card with ON/OFF switch and status badge."""
+        """
+        Creates card with ON/OFF switch, browser-linked status badge, and dependency indicators.
+        Affects main UI status card widgets and controls.
+        """
         card = tk.Frame(self.root, bg="#131b2a", padx=16, pady=14, highlightbackground="#1e293b", highlightthickness=1)
         card.pack(fill="x", padx=20, pady=(0, 12))
 
         # Status text indicator
         self.status_badge = tk.Label(
             card,
-            text="● SERVER ACTIEF (Poort 48921)",
-            font=("Segoe UI", 11, "bold"),
+            text="● GEKOPPELD AAN BROWSER • ACTIEF (Poort 48921)",
+            font=("Segoe UI", 10, "bold"),
             fg="#10b981",
             bg="#131b2a"
         )
-        self.status_badge.pack(anchor="w", pady=(0, 4))
+        self.status_badge.pack(anchor="w", pady=(0, 2))
+
+        auto_note = tk.Label(
+            card,
+            text="✓ Start voortaan stil op de achtergrond. Dit venster mag gesloten worden.",
+            font=("Segoe UI", 8),
+            fg="#94a3b8",
+            bg="#131b2a"
+        )
+        auto_note.pack(anchor="w", pady=(0, 4))
 
         # Dependencies sub-status
         has_ytdlp = bool(ToolResolver.get_binary_path('yt-dlp'))
@@ -397,9 +441,9 @@ def get_appdata_dir():
 
 def install_host():
     """
-    Installs AnyVideoDownloaderHelper to %LOCALAPPDATA%\\AnyVideoDownloader\\,
+    Installs AnyVideoDownloaderHelper and yt-dlp to %LOCALAPPDATA%\\AnyVideoDownloader\\,
     writes Native Messaging manifest JSON, and registers NativeMessagingHosts in HKCU.
-    Requires no administrative privileges.
+    Affects Windows registry entries and files in %LOCALAPPDATA%\\AnyVideoDownloader.
     """
     import winreg
     target_dir = get_appdata_dir()
@@ -413,11 +457,46 @@ def install_host():
     target_exe = target_dir / "AnyVideoDownloaderHelper.exe"
 
     # Copy current executable if running from PyInstaller bundle and different path
-    if current_exe != target_exe and current_exe.exists() and current_exe.suffix.lower() == '.exe':
+    if current_exe.exists() and current_exe.suffix.lower() == '.exe' and current_exe != target_exe:
         try:
             shutil.copy2(str(current_exe), str(target_exe))
         except Exception:
             pass
+
+    # Copy yt-dlp.exe to target directory
+    target_ytdlp = target_dir / "yt-dlp.exe"
+    ytdlp_src = None
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        bundle_ytdlp = Path(sys._MEIPASS) / "yt-dlp.exe"
+        if bundle_ytdlp.exists():
+            ytdlp_src = bundle_ytdlp
+
+    if not ytdlp_src:
+        local_ytdlp = current_exe.parent / "yt-dlp.exe"
+        if local_ytdlp.exists():
+            ytdlp_src = local_ytdlp
+
+    if not ytdlp_src:
+        resolved = ToolResolver.get_binary_path('yt-dlp')
+        if resolved and Path(resolved).exists():
+            ytdlp_src = Path(resolved)
+
+    if ytdlp_src and ytdlp_src.exists() and str(ytdlp_src.resolve()) != str(target_ytdlp.resolve()):
+        try:
+            if not target_ytdlp.exists() or target_ytdlp.stat().st_size != ytdlp_src.stat().st_size:
+                shutil.copy2(str(ytdlp_src), str(target_ytdlp))
+        except Exception:
+            pass
+
+    # Copy ffmpeg.exe to target directory if found on system and not yet present
+    target_ffmpeg = target_dir / "ffmpeg.exe"
+    if not target_ffmpeg.exists():
+        ffmpeg_src = ToolResolver.get_binary_path('ffmpeg')
+        if ffmpeg_src and Path(ffmpeg_src).exists() and str(Path(ffmpeg_src).resolve()) != str(target_ffmpeg.resolve()):
+            try:
+                shutil.copy2(str(ffmpeg_src), str(target_ffmpeg))
+            except Exception:
+                pass
 
     manifest_exe = target_exe if target_exe.exists() else current_exe
 

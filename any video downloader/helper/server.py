@@ -91,6 +91,20 @@ class ToolResolver:
         Locates the requested executable binary across local directories, user Python scripts, and system PATH.
         Affects binary resolution for external processes like yt-dlp and ffmpeg.
         """
+        # 1. Check embedded PyInstaller temp directory (_MEIPASS)
+        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+            meipass_exe = Path(sys._MEIPASS) / f"{name}.exe"
+            if meipass_exe.exists():
+                return str(meipass_exe)
+
+        # 2. Check %LOCALAPPDATA%\AnyVideoDownloader\
+        local_appdata = os.environ.get('LOCALAPPDATA')
+        if local_appdata:
+            appdata_exe = Path(local_appdata) / "AnyVideoDownloader" / f"{name}.exe"
+            if appdata_exe.exists():
+                return str(appdata_exe)
+
+        # 3. Check base directory of running executable
         base_dir = cls.get_base_dir()
         local_exe = base_dir / f"{name}.exe"
         if local_exe.exists():
@@ -117,11 +131,9 @@ class ToolResolver:
                 Path(sys.prefix) / "Scripts" / "yt-dlp.exe",
                 Path(sys.base_prefix) / "Scripts" / "yt-dlp.exe",
             ]
-            local_appdata = os.environ.get('LOCALAPPDATA')
             if local_appdata:
                 candidates.append(Path(local_appdata) / "Programs" / "Python" / "Python313" / "Scripts" / "yt-dlp.exe")
                 candidates.append(Path(local_appdata) / "Programs" / "Python" / "Python310" / "Scripts" / "yt-dlp.exe")
-                candidates.append(Path(local_appdata) / "AnyVideoDownloader" / "yt-dlp.exe")
             appdata = os.environ.get('APPDATA')
             if appdata:
                 candidates.append(Path(appdata) / "Python" / "Python313" / "Scripts" / "yt-dlp.exe")

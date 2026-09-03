@@ -8,7 +8,9 @@ icons_dir = base_dir.parent / "icons"
 a = Analysis(
     [str(base_dir / 'app_gui.py')],
     pathex=[str(base_dir)],
-    binaries=[],
+    binaries=[
+        (str(base_dir / 'yt-dlp.exe'), '.'),
+    ],
     datas=[
         (str(icons_dir / 'icon.ico'), '.'),
         (str(icons_dir / 'icon.png'), '.'),

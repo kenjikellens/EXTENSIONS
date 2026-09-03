@@ -395,21 +395,22 @@ body.avd-app {
   color: var(--tab-badge-text);
 }
 
-/* Dynamic list container housing resolution and bitrate cards */
+/* Dynamic list container housing resolution and bitrate items */
 .category-list {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 0;
   max-height: 280px;
   overflow-y: auto;
 }
 
-/* Clean flat option item row separated by a subtle divider line (no card containers) */
+/* Clean, ultra-compact flat option item row */
 .option-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 6px;
+  padding: 4px 6px;
+  min-height: 30px;
   background-color: transparent;
   border: none;
   border-bottom: 1px solid var(--border-subtle);
@@ -428,9 +429,23 @@ body.avd-app {
 
 /* Left-hand quality label inside option row */
 .option-row__label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-main);
+  line-height: 1.2;
+}
+
+/* Compact download icon button inside flat option rows */
+.option-row .icon-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  padding: 0;
+}
+
+.option-row .icon-btn__img {
+  width: 12px;
+  height: 12px;
 }
 
 /* Placeholder notification when no items match the selected category */

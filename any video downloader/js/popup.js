@@ -48,7 +48,6 @@ class PopupOrchestrator {
       videoThumbImg: document.getElementById('videoThumbImg'),
       videoTitleLabel: document.getElementById('videoTitleLabel'),
       videoDurationLabel: document.getElementById('videoDurationLabel'),
-      helperStatusPill: document.getElementById('helperStatusPill'),
       // Setup banner
       setupBanner: document.getElementById('setupBanner'),
       downloadHelperBtn: document.getElementById('downloadHelperBtn'),

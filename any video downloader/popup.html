@@ -32,14 +32,29 @@
     </div>
   </header>
 
-  <!-- Video Meta Card (YouTube & Detected Media) -->
+  <!-- Manual Stream / URL Input Bar (Prominently placed right below header) -->
+  <section class="manual-input-section">
+    <div class="input-action-group">
+      <input
+        type="url"
+        id="manualUrlInput"
+        class="text-input text-input--compact"
+        placeholder="Plak video / .m3u8 URL..."
+        data-i18n-placeholder="manual_placeholder"
+      />
+      <button id="manualDownloadBtn" class="icon-btn icon-btn--primary" title="Download" data-i18n-title="download">
+        <img src="svg/download.svg" alt="Download" class="icon-btn__img" />
+      </button>
+    </div>
+  </section>
+
+  <!-- Video Meta Card (Placed under manual input link, without helper badge) -->
   <section id="videoInfoSection" class="video-info-card video-info-card--hidden">
     <img id="videoThumbImg" src="" alt="Thumbnail" class="video-info-card__thumb" />
     <div class="video-info-card__details">
       <h2 id="videoTitleLabel" class="video-info-card__title" data-i18n="video_loading">Video laden...</h2>
       <div class="video-info-card__meta">
         <span id="videoDurationLabel" class="meta-tag">0:00</span>
-        <span id="helperStatusPill" class="status-pill status-pill--offline" data-i18n="helper_offline">○ Helper Offline</span>
       </div>
     </div>
   </section>
@@ -64,22 +79,6 @@
     </div>
     <div class="setup-banner__steps">
       <span data-i18n="banner_steps">Start <strong>install_helper.bat</strong> of open de .exe en klik op <em>'Koppel aan Browser'</em></span>
-    </div>
-  </section>
-
-  <!-- Manual Stream / URL Input Bar (Prominently placed above content box) -->
-  <section class="manual-input-section">
-    <div class="input-action-group">
-      <input
-        type="url"
-        id="manualUrlInput"
-        class="text-input text-input--compact"
-        placeholder="Plak video / .m3u8 URL..."
-        data-i18n-placeholder="manual_placeholder"
-      />
-      <button id="manualDownloadBtn" class="icon-btn icon-btn--primary" title="Download" data-i18n-title="download">
-        <img src="svg/download.svg" alt="Download" class="icon-btn__img" />
-      </button>
     </div>
   </section>
 

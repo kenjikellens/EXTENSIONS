@@ -75,14 +75,6 @@ export class ViewManager {
     } else {
       this.elements.videoDurationLabel.style.display = 'none';
     }
-
-    if (isHelperOnline) {
-      this.elements.helperStatusPill.className = 'status-pill status-pill--online';
-      this.elements.helperStatusPill.textContent = t('helper_active', this.currentLang);
-    } else {
-      this.elements.helperStatusPill.className = 'status-pill status-pill--offline';
-      this.elements.helperStatusPill.textContent = t('helper_offline', this.currentLang);
-    }
   }
 
   /**

@@ -127,7 +127,10 @@ export class ViewManager {
   }
 
   /**
-   * Renders list of items for the currently active category using flat rows and icon-only buttons.
+   * Renders media items for the active category (video, audio, subtitles) with title and mini metadata badges.
+   * Updates the categoryList DOM element with interactive download rows.
+   * @param {Object} data - Metadata object containing video, audio, and subtitle option arrays
+   * @param {Function} onDownload - Callback invoked when a download button is triggered
    */
   renderActiveCategoryList(data, onDownload) {
     const listEl = this.elements.categoryList;
@@ -145,9 +148,17 @@ export class ViewManager {
       items.forEach((item) => {
         const row = document.createElement('div');
         row.className = 'option-row';
+
+        const badgesHtml = [
+          item.fps ? `<span class="mini-badge mini-badge--fps">${this.escapeHtml(item.fps)}</span>` : '',
+          item.codec ? `<span class="mini-badge mini-badge--codec">${this.escapeHtml(item.codec)}</span>` : '',
+          `<span class="mini-badge mini-badge--ext">${this.escapeHtml(item.ext || 'mp4')}</span>`
+        ].filter(Boolean).join('');
+
         row.innerHTML = `
           <div class="option-row__info">
             <span class="option-row__label">${this.escapeHtml(item.label || `${item.height}p`)}</span>
+            <div class="badge-group">${badgesHtml}</div>
           </div>
           <button class="icon-btn icon-btn--primary" title="${dlTitle}">
             <img src="svg/download.svg" alt="Download" class="icon-btn__img" />
@@ -175,6 +186,9 @@ export class ViewManager {
         row.innerHTML = `
           <div class="option-row__info">
             <span class="option-row__label">${this.escapeHtml(label)}</span>
+            <div class="badge-group">
+              <span class="mini-badge mini-badge--ext">${this.escapeHtml(item.ext || 'mp3')}</span>
+            </div>
           </div>
           <button class="icon-btn icon-btn--primary" title="${dlTitle}">
             <img src="svg/download.svg" alt="Download" class="icon-btn__img" />
@@ -212,6 +226,9 @@ export class ViewManager {
         row.innerHTML = `
           <div class="option-row__info">
             <span class="option-row__label">${this.escapeHtml(displayName)}</span>
+            <div class="badge-group">
+              <span class="mini-badge mini-badge--ext">${this.escapeHtml(item.ext || 'srt')}</span>
+            </div>
           </div>
           <button class="icon-btn icon-btn--primary" title="${dlTitle}">
             <img src="svg/download.svg" alt="Download" class="icon-btn__img" />

@@ -277,9 +277,29 @@ class FormatExtractor:
     }
 
     @classmethod
+    def _normalize_codec(cls, vcodec):
+        """
+        Normalizes raw video codec strings from yt-dlp to clean user-facing badges (vp9, h264, av1).
+        Affects video format metadata sent to the popup view.
+        """
+        if not vcodec or vcodec == 'none':
+            return 'h264'
+        vc = str(vcodec).lower()
+        if 'av01' in vc or 'av1' in vc:
+            return 'av1'
+        if 'vp9' in vc or 'vp09' in vc:
+            return 'vp9'
+        if 'avc' in vc or 'h264' in vc or 'h.264' in vc:
+            return 'h264'
+        if 'hev' in vc or 'h265' in vc or 'h.265' in vc:
+            return 'hevc'
+        return vc.split('.')[0]
+
+    @classmethod
     def parse_metadata(cls, info_dict):
         """
-        Parses raw yt-dlp JSON dictionary into clean, deduplicated available options.
+        Parses raw yt-dlp JSON dictionary into clean, deduplicated available options with FPS, codec, and extension badges.
+        Affects media list display in the extension popup.
         """
         title = info_dict.get('title', 'Video')
         thumbnail = info_dict.get('thumbnail', '')
@@ -288,7 +308,7 @@ class FormatExtractor:
 
         formats = info_dict.get('formats', [])
 
-        # 1. Extract distinct available video resolutions
+        # 1. Extract distinct available video resolutions with FPS and codec
         available_heights = set()
         for f in formats:
             h = f.get('height')
@@ -299,7 +319,31 @@ class FormatExtractor:
         video_options = []
         for h in sorted_heights:
             label = f"{h}p (4K)" if h >= 2160 else f"{h}p"
-            video_options.append({"height": h, "label": label})
+
+            # Find matching video streams for this height to extract best FPS and primary codec
+            height_formats = [
+                f for f in formats 
+                if f.get('height') == h and f.get('vcodec') and f.get('vcodec') != 'none'
+            ]
+
+            # Sort by fps descending, then tbr/vbr descending to find best format
+            height_formats.sort(
+                key=lambda x: (x.get('fps') or 0, x.get('tbr') or x.get('vbr') or 0), 
+                reverse=True
+            )
+
+            best_f = height_formats[0] if height_formats else None
+            fps_val = best_f.get('fps') if best_f else None
+            fps_label = f"{int(round(fps_val))} fps" if fps_val and fps_val >= 1 else None
+            codec = cls._normalize_codec(best_f.get('vcodec')) if best_f else 'h264'
+
+            video_options.append({
+                "height": h,
+                "label": label,
+                "fps": fps_label,
+                "codec": codec,
+                "ext": "mp4"
+            })
 
         # 2. Extract available audio bitrates for MP3 conversion
         standard_tiers = [320, 256, 192, 128, 96, 64]
@@ -320,10 +364,11 @@ class FormatExtractor:
                     audio_options.append({
                         "abr": tier,
                         "label": f"{tier} kbps ({lang_name})",
-                        "lang": lang_code
+                        "lang": lang_code,
+                        "ext": "mp3"
                     })
         else:
-            audio_options = [{"abr": tier, "label": f"{tier} kbps"} for tier in standard_tiers]
+            audio_options = [{"abr": tier, "label": f"{tier} kbps", "ext": "mp3"} for tier in standard_tiers]
 
         # 3. Extract actual working subtitles (official manual subtitles + original spoken auto-captions)
         subtitles_dict = info_dict.get('subtitles', {})
@@ -345,7 +390,7 @@ class FormatExtractor:
         for lang_code in sorted(valid_subs.keys()):
             clean_code = lang_code.lower()
             name = cls.LANGUAGE_MAP.get(clean_code) or cls.LANGUAGE_MAP.get(clean_code.split('-')[0]) or lang_code.upper()
-            subtitle_options.append({"lang": lang_code, "name": name})
+            subtitle_options.append({"lang": lang_code, "name": name, "ext": "srt"})
 
         return {
             "title": title,

@@ -338,10 +338,9 @@ class PopupOrchestrator {
         this.renderStandardStreams();
       }
     });
-  }
-
-  /**
-   * Renders stream cards for standard websites.
+  }  /**
+   * Renders detected media streams for standard web pages matching the unified YouTube-style design.
+   * Updates the streamList DOM container with styled stream cards.
    */
   renderStandardStreams() {
     const list = this.elements.streamList;
@@ -358,25 +357,50 @@ class PopupOrchestrator {
       const card = document.createElement('div');
       card.className = 'stream-card';
 
-      const resLabel = stream.resolution ? stream.resolution : `Stream #${index + 1}`;
+      // Clean resolution title
+      let titleLabel = stream.resolution;
+      if (!titleLabel) {
+        if (stream.type === 'hls' || stream.type === 'dash') {
+          titleLabel = 'Adaptive';
+        } else {
+          titleLabel = 'Direct Stream';
+        }
+      }
+
+      // Build mini badges
+      const badges = [];
+      if (stream.fps) {
+        badges.push(`<span class="mini-badge mini-badge--fps">${this.viewManager.escapeHtml(stream.fps)}</span>`);
+      }
+      if (stream.codec) {
+        badges.push(`<span class="mini-badge mini-badge--codec">${this.viewManager.escapeHtml(stream.codec)}</span>`);
+      }
+      if (stream.ext) {
+        badges.push(`<span class="mini-badge mini-badge--ext">${this.viewManager.escapeHtml(stream.ext)}</span>`);
+      }
+      if (stream.type) {
+        badges.push(`<span class="mini-badge mini-badge--type">${this.viewManager.escapeHtml(stream.type.toUpperCase())}</span>`);
+      }
+
+      const badgesHtml = badges.join('');
 
       card.innerHTML = `
         <div class="stream-card__top">
-          <div class="stream-card__meta">
-            <span class="status-badge">${stream.type}</span>
-            <span style="font-size:10px;color:var(--text-muted);">${resLabel}</span>
+          <div class="stream-card__header">
+            <span class="stream-card__res">${this.viewManager.escapeHtml(titleLabel)}</span>
+            <div class="badge-group">${badgesHtml}</div>
+          </div>
+          <div class="stream-card__actions">
+            <button class="icon-btn icon-btn--primary btn-dl" title="${t('download', this.currentLanguage)}">
+              <img src="svg/download.svg" alt="Download" class="icon-btn__img" />
+            </button>
+            <button class="icon-btn icon-btn--secondary btn-cp" title="${t('copy', this.currentLanguage)}">
+              <img src="svg/copy.svg" alt="Kopiëren" class="icon-btn__img" />
+            </button>
           </div>
         </div>
         <div class="stream-card__title">${this.viewManager.escapeHtml(stream.title || 'Video Stream')}</div>
         <div class="stream-card__url">${this.viewManager.escapeHtml(stream.url)}</div>
-        <div class="stream-card__actions">
-          <button class="icon-btn icon-btn--primary btn-dl" title="${t('download', this.currentLanguage)}">
-            <img src="svg/download.svg" alt="Download" class="icon-btn__img" />
-          </button>
-          <button class="icon-btn icon-btn--secondary btn-cp" title="${t('copy', this.currentLanguage)}">
-            <img src="svg/copy.svg" alt="Kopiëren" class="icon-btn__img" />
-          </button>
-        </div>
       `;
 
       card.querySelector('.btn-dl').onclick = () => this.startStandardDownload(stream);

@@ -77,9 +77,35 @@ function classifyStreamType(url, contentType = '') {
 }
 
 /**
+ * Extracts a normalized file extension or container label from a URL and stream type.
+ * Affects the extension badge metadata stored in tab stream records.
+ * @param {string} url - Stream target URL
+ * @param {string} type - Classify stream type ('hls' | 'dash' | 'direct' | 'blob')
+ * @returns {string} File extension label (e.g. 'mp4', 'm3u8', 'mpd')
+ */
+function detectStreamExtension(url, type) {
+  try {
+    const cleanUrl = url.split('?')[0].split('#')[0].toLowerCase();
+    const match = cleanUrl.match(/\.(mp4|m3u8|mpd|webm|mkv|mov|m4v|flv|ts|m4s)($|\/)/i);
+    if (match) {
+      return match[1];
+    }
+  } catch {
+    // Ignore URL parsing errors
+  }
+
+  if (type === 'hls') return 'm3u8';
+  if (type === 'dash') return 'mpd';
+  if (type === 'direct') return 'mp4';
+  if (type === 'blob') return 'blob';
+  return 'mp4';
+}
+
+/**
  * Registers a detected stream for a given tab ID and updates the toolbar badge.
+ * Updates the in-memory tabStreamsMap and triggers an action badge re-render.
  * @param {number} tabId - Browser tab ID
- * @param {Object} streamData - Stream metadata { url, type, title, resolution, format, source }
+ * @param {Object} streamData - Stream metadata { url, type, title, resolution, fps, codec, format, source }
  */
 function registerStream(tabId, streamData) {
   if (!tabId || tabId < 0 || !streamData.url) return;
@@ -94,10 +120,13 @@ function registerStream(tabId, streamData) {
 
   const streams = tabStreamsMap.get(tabId);
   if (streams.has(streamData.url)) {
-    // Update existing stream with newer metadata if available (e.g. resolution)
+    // Update existing stream with newer metadata if available (e.g. resolution or fps)
     const existing = streams.get(streamData.url);
-    if (streamData.resolution && !existing.resolution) {
+    if (streamData.resolution && (!existing.resolution || existing.resolution.includes('x'))) {
       existing.resolution = streamData.resolution;
+    }
+    if (streamData.fps && !existing.fps) {
+      existing.fps = streamData.fps;
     }
     return;
   }
@@ -111,6 +140,9 @@ function registerStream(tabId, streamData) {
     type: type,
     title: cleanTitle,
     resolution: streamData.resolution || null,
+    fps: streamData.fps || null,
+    codec: streamData.codec || null,
+    ext: detectStreamExtension(streamData.url, type),
     bitrate: streamData.bitrate || null,
     source: streamData.source || 'network',
     detectedAt: Date.now()

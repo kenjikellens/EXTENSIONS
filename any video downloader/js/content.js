@@ -22,8 +22,48 @@
   }
 
   /**
+   * Computes approximate FPS and clean resolution label from an HTMLVideoElement.
+   * Affects stream registration payload sent to the background script.
+   * @param {HTMLVideoElement} video - The target video element
+   * @returns {{ resolution: string|null, fps: string|null }}
+   */
+  function getVideoMetrics(video) {
+    let resolution = null;
+    let fps = null;
+
+    if (video.videoHeight) {
+      const h = video.videoHeight;
+      if (h >= 2160) resolution = '2160p (4K)';
+      else if (h >= 1440) resolution = '1440p (2K)';
+      else if (h >= 1080) resolution = '1080p';
+      else if (h >= 720) resolution = '720p';
+      else if (h >= 480) resolution = '480p';
+      else if (h >= 360) resolution = '360p';
+      else resolution = `${video.videoWidth}x${h}`;
+    }
+
+    if (typeof video.getVideoPlaybackQuality === 'function' && video.currentTime > 0.5) {
+      const quality = video.getVideoPlaybackQuality();
+      if (quality && quality.totalVideoFrames > 0) {
+        const estFps = Math.round(quality.totalVideoFrames / video.currentTime);
+        if (estFps >= 20 && estFps <= 144) {
+          let snapped = estFps;
+          if (Math.abs(estFps - 60) <= 4) snapped = 60;
+          else if (Math.abs(estFps - 50) <= 2) snapped = 50;
+          else if (Math.abs(estFps - 30) <= 3) snapped = 30;
+          else if (Math.abs(estFps - 24) <= 2) snapped = 24;
+          fps = `${snapped} fps`;
+        }
+      }
+    }
+
+    return { resolution, fps };
+  }
+
+  /**
    * Forwards a detected media stream to the extension background service worker.
-   * @param {Object} streamData - Metadata { url, type, title, resolution, source }
+   * Dispatches registered media stream event to the background script state.
+   * @param {Object} streamData - Metadata { url, type, title, resolution, fps, source }
    */
   function sendStreamToBackground(streamData) {
     if (!streamData || !streamData.url) return;
@@ -36,6 +76,7 @@
           type: streamData.type,
           title: streamData.title || document.title || 'Video Stream',
           resolution: streamData.resolution || null,
+          fps: streamData.fps || null,
           source: streamData.source || 'dom'
         },
         title: document.title || 'Video Stream'
@@ -46,7 +87,8 @@
   }
 
   /**
-   * Scans HTML5 <video> and <source> elements in the current document.
+   * Scans HTML5 video and source elements in the current document for media sources, resolution, and fps.
+   * Discovers embedded page video elements and transmits stream records to the background service worker.
    */
   function scanDomVideoElements() {
     const videoElements = document.querySelectorAll('video');
@@ -54,10 +96,11 @@
     videoElements.forEach((video) => {
       const src = video.currentSrc || video.src;
       if (src) {
-        const resolution = video.videoWidth && video.videoHeight ? `${video.videoWidth}x${video.videoHeight}` : null;
+        const metrics = getVideoMetrics(video);
         sendStreamToBackground({
           url: src,
-          resolution: resolution,
+          resolution: metrics.resolution,
+          fps: metrics.fps,
           source: 'video-element'
         });
       }

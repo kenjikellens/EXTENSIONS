@@ -17,14 +17,17 @@
       </div>
     </div>
     <div class="app-header__actions">
-      <button id="refreshStatusBtn" class="icon-btn icon-btn--secondary" title="Server status controleren / herladen">
+      <button id="refreshStatusBtn" class="icon-btn icon-btn--secondary" title="Server status controleren / herladen" data-i18n-title="refresh_title">
         <img src="svg/refresh.svg" alt="Verversen" class="icon-btn__img" />
       </button>
-      <button id="themeToggleBtn" class="icon-btn icon-btn--secondary" title="Thema wisselen (Light/Dark)">
+      <button id="themeToggleBtn" class="icon-btn icon-btn--secondary" title="Thema wisselen (Light/Dark)" data-i18n-title="theme_title">
         <img id="themeToggleImg" src="svg/sun.svg" alt="Thema" class="icon-btn__img" />
       </button>
-      <button id="clearStreamsBtn" class="icon-btn icon-btn--delete" title="Lijst wissen">
+      <button id="clearStreamsBtn" class="icon-btn icon-btn--delete" title="Lijst wissen" data-i18n-title="clear_title">
         <img src="svg/trash.svg" alt="Wissen" class="icon-btn__img" />
+      </button>
+      <button id="settingsBtn" class="icon-btn icon-btn--secondary" title="Instellingen" data-i18n-title="settings_title">
+        <img src="svg/settings.svg" alt="Instellingen" class="icon-btn__img" />
       </button>
     </div>
   </header>
@@ -33,10 +36,10 @@
   <section id="videoInfoSection" class="video-info-card video-info-card--hidden">
     <img id="videoThumbImg" src="" alt="Thumbnail" class="video-info-card__thumb" />
     <div class="video-info-card__details">
-      <h2 id="videoTitleLabel" class="video-info-card__title">Video laden...</h2>
+      <h2 id="videoTitleLabel" class="video-info-card__title" data-i18n="video_loading">Video laden...</h2>
       <div class="video-info-card__meta">
         <span id="videoDurationLabel" class="meta-tag">0:00</span>
-        <span id="helperStatusPill" class="status-pill status-pill--offline">○ Helper Offline</span>
+        <span id="helperStatusPill" class="status-pill status-pill--offline" data-i18n="helper_offline">○ Helper Offline</span>
       </div>
     </div>
   </section>
@@ -44,23 +47,39 @@
   <!-- Helper Setup Banner (Shown when Helper is needed and offline) -->
   <section id="setupBanner" class="setup-banner setup-banner--hidden">
     <div class="setup-banner__header">
-      <span class="setup-banner__title">YouTube Helper Vereist</span>
+      <span class="setup-banner__title" data-i18n="banner_title">YouTube Helper Vereist</span>
     </div>
-    <p class="setup-banner__desc">
+    <p class="setup-banner__desc" data-i18n="banner_desc">
       YouTube splitst audio en video. Koppel eenmalig de helper om 1080p, 4K en MP3 direct in de browser te ontgrendelen:
     </p>
     <div class="setup-banner__actions">
       <button id="downloadHelperBtn" class="pill-btn pill-btn--primary">
         <img src="svg/download.svg" alt="Download" class="pill-btn__img" />
-        <span>Download Helper (.exe)</span>
+        <span data-i18n="download_helper_btn">Download Helper (.exe)</span>
       </button>
       <button id="checkHelperNowBtn" class="pill-btn pill-btn--secondary">
         <img src="svg/refresh.svg" alt="Controleer" class="pill-btn__img" />
-        <span>Opnieuw Controleren</span>
+        <span data-i18n="check_helper_btn">Opnieuw Controleren</span>
       </button>
     </div>
     <div class="setup-banner__steps">
-      <span>Start <strong>install_helper.bat</strong> of open de .exe en klik op <em>'Koppel aan Browser'</em></span>
+      <span data-i18n="banner_steps">Start <strong>install_helper.bat</strong> of open de .exe en klik op <em>'Koppel aan Browser'</em></span>
+    </div>
+  </section>
+
+  <!-- Manual Stream / URL Input Bar (Prominently placed above content box) -->
+  <section class="manual-input-section">
+    <div class="input-action-group">
+      <input
+        type="url"
+        id="manualUrlInput"
+        class="text-input text-input--compact"
+        placeholder="Plak video / .m3u8 URL..."
+        data-i18n-placeholder="manual_placeholder"
+      />
+      <button id="manualDownloadBtn" class="icon-btn icon-btn--primary" title="Download" data-i18n-title="download">
+        <img src="svg/download.svg" alt="Download" class="icon-btn__img" />
+      </button>
     </div>
   </section>
 
@@ -68,22 +87,22 @@
   <section id="categoryContainer" class="category-container category-container--hidden">
     <div class="tab-bar">
       <button id="tabVideoBtn" class="tab-btn tab-btn--active">
-        <span>Video</span><span class="tab-badge">0</span>
+        <span data-i18n="tab_video">Video</span><span class="tab-badge">0</span>
       </button>
       <button id="tabAudioBtn" class="tab-btn">
-        <span>Audio</span><span class="tab-badge">0</span>
+        <span data-i18n="tab_audio">Audio</span><span class="tab-badge">0</span>
       </button>
       <button id="tabSubBtn" class="tab-btn">
-        <span>Ondertitels</span><span class="tab-badge">0</span>
+        <span data-i18n="tab_subtitles">Ondertitels</span><span class="tab-badge">0</span>
       </button>
     </div>
     <div id="categoryList" class="category-list">
-      <!-- Populated dynamically with exact available options -->
+      <!-- Populated dynamically with exact flat options -->
     </div>
   </section>
 
-  <!-- Search and Filter Bar -->
-  <section id="filterBarSection" class="filter-bar">
+  <!-- Search and Filter Bar (Shown in stream list mode) -->
+  <section id="filterBarSection" class="filter-bar filter-bar--hidden">
     <div class="search-box">
       <img src="svg/search.svg" alt="Zoeken" class="search-box__icon" />
       <input
@@ -91,14 +110,15 @@
         id="searchFilterInput"
         class="search-box__input"
         placeholder="Filter streams op naam of type..."
+        data-i18n-placeholder="filter_placeholder"
       />
     </div>
   </section>
 
-  <!-- Active Download Progress Indicator -->
+  <!-- Active File Download Progress Indicator (ONLY shown during actual file downloads) -->
   <section id="downloadProgressSection" class="progress-card progress-card--hidden">
     <div class="progress-card__header">
-      <span id="progressStatusLabel" class="progress-card__status">Downloaden...</span>
+      <span id="progressStatusLabel" class="progress-card__status" data-i18n="downloading">Downloaden...</span>
       <span id="progressPercentLabel" class="progress-card__percent">0%</span>
     </div>
     <div class="progress-bar-track">
@@ -108,13 +128,19 @@
       <span id="progressSpeedLabel" class="progress-speed"></span>
       <button id="cancelDownloadBtn" class="pill-btn pill-btn--danger">
         <img src="svg/close.svg" alt="Annuleren" class="pill-btn__img" />
-        <span>Annuleren</span>
+        <span data-i18n="cancel">Annuleren</span>
       </button>
     </div>
   </section>
 
-  <!-- Standard Stream List Container (For regular streaming sites) -->
+  <!-- Standard Stream List Container (For regular streaming sites & empty area) -->
   <main id="standardStreamContainer" class="stream-container">
+    <!-- Containerless Fetching Loader (Subtle spinner + "Fetching..." underneath, no box) -->
+    <div id="fetchingState" class="fetching-state fetching-state--hidden">
+      <div class="fetching-spinner"></div>
+      <span class="fetching-text" data-i18n="fetching">Fetching...</span>
+    </div>
+
     <div id="streamList" class="stream-list">
       <!-- Dynamically filled stream cards -->
     </div>
@@ -122,26 +148,34 @@
     <!-- Empty State -->
     <div id="emptyState" class="empty-state">
       <img src="svg/video.svg" alt="Geen video" class="empty-state__icon" />
-      <p class="empty-state__title">Geen video streams gedetecteerd</p>
-      <p class="empty-state__subtitle">Speel een video af op de pagina of plak hieronder handmatig een URL.</p>
+      <p class="empty-state__title" data-i18n="empty_title">Geen video streams gedetecteerd</p>
+      <p class="empty-state__subtitle" data-i18n="empty_subtitle">Speel een video af op de pagina of plak hierboven handmatig een URL.</p>
     </div>
   </main>
 
-  <!-- Manual Stream Input Section -->
-  <footer class="manual-input-footer">
-    <div class="input-action-group">
-      <input
-        type="url"
-        id="manualUrlInput"
-        class="text-input text-input--compact"
-        placeholder="Plak video / .m3u8 URL..."
-      />
-      <button id="manualDownloadBtn" class="pill-btn pill-btn--primary">
-        <img src="svg/download.svg" alt="Download" class="pill-btn__img" />
-        <span>Download</span>
-      </button>
+  <!-- Settings Modal Overlay -->
+  <div id="settingsModal" class="modal-overlay modal-overlay--hidden">
+    <div class="modal-card">
+      <div class="modal-card__header">
+        <h2 class="modal-card__title" data-i18n="settings_header">Instellingen</h2>
+        <button id="closeSettingsBtn" class="icon-btn icon-btn--secondary" title="Sluiten" data-i18n-title="settings_close">
+          <img src="svg/close.svg" alt="Sluiten" class="icon-btn__img" />
+        </button>
+      </div>
+      <div class="modal-card__body">
+        <div class="settings-row">
+          <label for="languageSelect" class="settings-label" data-i18n="settings_language">Taal / Language</label>
+          <select id="languageSelect" class="select-input">
+            <option value="nl">Nederlands</option>
+            <option value="en">English</option>
+            <option value="de">Deutsch</option>
+            <option value="fr">Français</option>
+            <option value="es">Español</option>
+          </select>
+        </div>
+      </div>
     </div>
-  </footer>
+  </div>
 
   <!-- Notification Toast -->
   <div id="toastNotification" class="toast toast--hidden"></div>

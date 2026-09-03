@@ -404,29 +404,32 @@ body.avd-app {
   overflow-y: auto;
 }
 
-/* High-contrast option item card representing an available quality tier */
+/* Clean flat option item row separated by a subtle divider line (no card containers) */
 .option-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 9px 12px;
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-card);
-  border-radius: var(--radius-md);
-  box-shadow: var(--card-shadow);
-  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  padding: 8px 6px;
+  background-color: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background-color 0.15s ease;
 }
 
-/* Hover state highlighting active option item card */
+/* Remove bottom border on the last item */
+.option-row:last-child {
+  border-bottom: none;
+}
+
+/* Hover state highlighting active flat option row */
 .option-row:hover {
   background-color: var(--bg-surface-hover);
-  border-color: var(--border-focus);
 }
 
-/* Left-hand quality label inside option item card */
+/* Left-hand quality label inside option row */
 .option-row__label {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-main);
 }
 
@@ -814,6 +817,24 @@ body.avd-app {
   background-color: var(--color-delete-hover);
 }
 
+/* High-contrast emerald primary download icon button */
+.icon-btn--primary {
+  background-color: var(--color-download);
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Inverted icon filter for primary download icon button */
+.icon-btn--primary .icon-btn__img {
+  filter: brightness(0) invert(1);
+}
+
+/* Hover state for emerald primary download icon button */
+.icon-btn--primary:hover {
+  background-color: var(--color-download-hover);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
 /* High-contrast text input field */
 .text-input {
   background-color: var(--bg-surface);
@@ -840,11 +861,12 @@ body.avd-app {
   flex: 1;
 }
 
-/* Manual URL input footer docked at the bottom of the popup */
+/* Manual URL input section docked above the stream container */
+.manual-input-section,
 .manual-input-footer {
-  padding: 10px 14px;
+  padding: 8px 14px;
   background-color: var(--bg-surface);
-  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 /* Flex wrapper grouping manual URL input and download button */
@@ -918,4 +940,140 @@ body.avd-app {
 /* Visibility modifier to hide toast */
 .toast--hidden {
   display: none !important;
+}
+
+/* ==========================================================================
+   11. FETCHING LOADER (Containerless Spinner + Text)
+   ========================================================================== */
+
+/* Clean, containerless fetching state centered in stream box */
+.fetching-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  gap: 12px;
+}
+
+/* Visibility modifier for fetching state */
+.fetching-state--hidden {
+  display: none !important;
+}
+
+/* Minimalist spinning ring loader */
+.fetching-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid var(--border-subtle);
+  border-top-color: var(--color-download);
+  border-radius: 50%;
+  animation: fetching-rotate 0.8s linear infinite;
+}
+
+@keyframes fetching-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Descriptive status text below spinner */
+.fetching-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+
+/* ==========================================================================
+   12. SETTINGS MODAL OVERLAY
+   ========================================================================== */
+
+/* Fullscreen modal backdrop */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+  transition: opacity 0.15s ease;
+}
+
+/* Visibility modifier for modal */
+.modal-overlay--hidden {
+  display: none !important;
+}
+
+/* Modal container card */
+.modal-card {
+  width: 100%;
+  max-width: 320px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+/* Header row of modal */
+.modal-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Modal title text */
+.modal-card__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+/* Modal body content wrapper */
+.modal-card__body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Single setting item row */
+.settings-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Setting title label */
+.settings-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+/* Clean select dropdown */
+.select-input {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  box-shadow: var(--card-shadow);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Focused state for select dropdown */
+.select-input:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
 }

@@ -3,6 +3,7 @@
  * @description Main OOP Orchestrator for the Any Video Downloader extension popup.
  */
 
+import { applyI18n, t } from './i18n.js';
 import { HelperBridge } from './helper-bridge.js';
 import { HelperPackageBuilder } from './helper-bundle.js';
 import { HLSDownloaderEngine } from './hls-downloader.js';
@@ -17,6 +18,8 @@ class PopupOrchestrator {
     this.stopPolling = null;
     this.activeAbortController = null;
     this.autoPollTimer = null;
+    this.currentLanguage = 'nl';
+    this.currentVideoData = null;
 
     this.helperBridge = new HelperBridge();
     this.themeManager = new ThemeManager();
@@ -35,6 +38,11 @@ class PopupOrchestrator {
       // Header
       clearStreamsBtn: document.getElementById('clearStreamsBtn'),
       refreshStatusBtn: document.getElementById('refreshStatusBtn'),
+      settingsBtn: document.getElementById('settingsBtn'),
+      // Settings Modal
+      settingsModal: document.getElementById('settingsModal'),
+      closeSettingsBtn: document.getElementById('closeSettingsBtn'),
+      languageSelect: document.getElementById('languageSelect'),
       // Video info card
       videoInfoSection: document.getElementById('videoInfoSection'),
       videoThumbImg: document.getElementById('videoThumbImg'),
@@ -51,8 +59,9 @@ class PopupOrchestrator {
       tabAudioBtn: document.getElementById('tabAudioBtn'),
       tabSubBtn: document.getElementById('tabSubBtn'),
       categoryList: document.getElementById('categoryList'),
-      // Standard stream list
+      // Standard stream list & fetching
       standardStreamContainer: document.getElementById('standardStreamContainer'),
+      fetchingState: document.getElementById('fetchingState'),
       streamList: document.getElementById('streamList'),
       emptyState: document.getElementById('emptyState'),
       // Filter & manual inputs
@@ -60,7 +69,7 @@ class PopupOrchestrator {
       searchFilterInput: document.getElementById('searchFilterInput'),
       manualUrlInput: document.getElementById('manualUrlInput'),
       manualDownloadBtn: document.getElementById('manualDownloadBtn'),
-      // Progress card
+      // Progress card (for downloads only)
       progressSection: document.getElementById('downloadProgressSection'),
       progressStatusLabel: document.getElementById('progressStatusLabel'),
       progressPercentLabel: document.getElementById('progressPercentLabel'),
@@ -86,6 +95,24 @@ class PopupOrchestrator {
       this.elements.checkHelperNowBtn.addEventListener('click', () => this.refreshCurrentView());
     }
 
+    if (this.elements.settingsBtn) {
+      this.elements.settingsBtn.addEventListener('click', () => this.openSettings());
+    }
+
+    if (this.elements.closeSettingsBtn) {
+      this.elements.closeSettingsBtn.addEventListener('click', () => this.closeSettings());
+    }
+
+    if (this.elements.languageSelect) {
+      this.elements.languageSelect.addEventListener('change', (e) => this.changeLanguage(e.target.value));
+    }
+
+    if (this.elements.settingsModal) {
+      this.elements.settingsModal.addEventListener('click', (e) => {
+        if (e.target === this.elements.settingsModal) this.closeSettings();
+      });
+    }
+
     this.elements.searchFilterInput.addEventListener('input', (e) => {
       this.filterStreams(e.target.value.trim().toLowerCase());
     });
@@ -96,6 +123,52 @@ class PopupOrchestrator {
     });
 
     this.elements.cancelDownloadBtn.addEventListener('click', () => this.cancelActiveDownload());
+  }
+
+  /**
+   * Opens the settings modal.
+   */
+  openSettings() {
+    if (this.elements.settingsModal) {
+      this.elements.settingsModal.classList.remove('modal-overlay--hidden');
+    }
+  }
+
+  /**
+   * Closes the settings modal.
+   */
+  closeSettings() {
+    if (this.elements.settingsModal) {
+      this.elements.settingsModal.classList.add('modal-overlay--hidden');
+    }
+  }
+
+  /**
+   * Switches language and persists choice.
+   * @param {string} lang
+   */
+  async changeLanguage(lang) {
+    this.currentLanguage = lang;
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      await chrome.storage.local.set({ language: lang });
+    }
+    this.applyCurrentLanguage();
+  }
+
+  /**
+   * Applies translations to DOM elements and sub-views.
+   */
+  applyCurrentLanguage() {
+    applyI18n(this.currentLanguage);
+    this.viewManager.setLanguage(this.currentLanguage);
+    if (this.currentVideoData) {
+      this.viewManager.renderCategorizedOptions(this.currentVideoData, (type, item) => {
+        this.startHelperDownload(this.currentVideoData.url, type, item, this.currentVideoData.title);
+      });
+    }
+    if (this.filteredStreams && this.filteredStreams.length > 0) {
+      this.renderStandardStreams();
+    }
   }
 
   /**
@@ -151,6 +224,22 @@ class PopupOrchestrator {
   async init() {
     await this.themeManager.init();
 
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      try {
+        const stored = await chrome.storage.local.get(['language']);
+        if (stored && stored.language) {
+          this.currentLanguage = stored.language;
+        }
+      } catch {
+        // Use default 'nl'
+      }
+    }
+
+    if (this.elements.languageSelect) {
+      this.elements.languageSelect.value = this.currentLanguage;
+    }
+    this.applyCurrentLanguage();
+
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tab || !tab.id) return;
@@ -174,9 +263,9 @@ class PopupOrchestrator {
    * @param {string} url - Active YouTube URL
    */
   async handleYouTubeTab(url) {
-    // Hide standard stream list container
-    this.elements.standardStreamContainer.classList.add('stream-container--hidden');
     this.elements.filterBarSection.classList.add('filter-bar--hidden');
+    this.elements.categoryContainer.classList.add('category-container--hidden');
+    this.elements.standardStreamContainer.classList.remove('stream-container--hidden');
 
     const health = await this.helperBridge.checkHealth();
 
@@ -184,17 +273,18 @@ class PopupOrchestrator {
       this.stopAutoPolling();
       this.viewManager.hideSetupBanner();
       try {
-        const progressMsg = health.ytdlp ? 'Video formaten analyseren...' : 'yt-dlp component voorbereiden & analyseren...';
-        this.showProgress(progressMsg, null, 'Even geduld...', true);
+        this.viewManager.showFetching();
         const data = await this.helperBridge.getVideoInfo(url);
-        this.hideProgress();
+        this.viewManager.hideFetching();
 
+        this.elements.standardStreamContainer.classList.add('stream-container--hidden');
+        this.currentVideoData = data;
         this.viewManager.renderVideoHeader(data, true);
         this.viewManager.renderCategorizedOptions(data, (type, item) => {
           this.startHelperDownload(url, type, item, data.title);
         });
       } catch (err) {
-        this.hideProgress();
+        this.viewManager.hideFetching();
         const rawErr = err.message || '';
         let displayErr = `Fout bij laden: ${rawErr}`;
         if (rawErr.includes('WinError 2') || rawErr.includes('niet vinden') || rawErr.includes('ontbreekt')) {
@@ -206,21 +296,21 @@ class PopupOrchestrator {
         this.viewManager.renderSetupBanner(async () => {
           try {
             await HelperPackageBuilder.downloadHelperPackage();
-            this.showToast('AnyVideoDownloaderHelper.exe gedownload!');
+            this.showToast(t('helper_downloaded', this.currentLanguage));
           } catch {
-            this.showToast('Kon helper bestand niet downloaden.');
+            this.showToast(t('helper_download_failed', this.currentLanguage));
           }
         });
       }
     } else {
-      // Helper is offline -> show setup banner and start automatic auto-check
+      this.viewManager.hideFetching();
       this.viewManager.renderVideoHeader({ title: this.activeTab.title || 'YouTube Video' }, false);
       this.viewManager.renderSetupBanner(async () => {
         try {
           await HelperPackageBuilder.downloadHelperPackage();
-          this.showToast('AnyVideoDownloaderHelper.exe gedownload!');
+          this.showToast(t('helper_downloaded', this.currentLanguage));
         } catch {
-          this.showToast('Kon helper bestand niet downloaden.');
+          this.showToast(t('helper_download_failed', this.currentLanguage));
         }
       });
       this.startAutoPolling(url);
@@ -275,13 +365,11 @@ class PopupOrchestrator {
         <div class="stream-card__title">${this.viewManager.escapeHtml(stream.title || 'Video Stream')}</div>
         <div class="stream-card__url">${this.viewManager.escapeHtml(stream.url)}</div>
         <div class="stream-card__actions">
-          <button class="pill-btn pill-btn--primary btn-dl">
-            <img src="svg/download.svg" alt="Download" class="pill-btn__img" />
-            <span>Download</span>
+          <button class="icon-btn icon-btn--primary btn-dl" title="${t('download', this.currentLanguage)}">
+            <img src="svg/download.svg" alt="Download" class="icon-btn__img" />
           </button>
-          <button class="pill-btn pill-btn--secondary btn-cp">
-            <img src="svg/copy.svg" alt="Kopiëren" class="pill-btn__img" />
-            <span>Kopieer</span>
+          <button class="icon-btn icon-btn--secondary btn-cp" title="${t('copy', this.currentLanguage)}">
+            <img src="svg/copy.svg" alt="Kopiëren" class="icon-btn__img" />
           </button>
         </div>
       `;
@@ -289,7 +377,7 @@ class PopupOrchestrator {
       card.querySelector('.btn-dl').onclick = () => this.startStandardDownload(stream);
       card.querySelector('.btn-cp').onclick = () => {
         navigator.clipboard.writeText(stream.url);
-        this.showToast('URL gekopieerd!');
+        this.showToast(t('copied_toast', this.currentLanguage));
       };
 
       list.appendChild(card);
@@ -413,12 +501,12 @@ class PopupOrchestrator {
       this.streams = [];
       this.filteredStreams = [];
       this.renderStandardStreams();
-      this.showToast('Lijst gewist');
+      this.showToast(t('list_cleared', this.currentLanguage));
     });
   }
 
   /**
-   * Progress card update with indeterminate support.
+   * Progress card update for active downloads.
    */
   showProgress(status, percent, speed = '', isIndeterminate = false) {
     this.elements.progressSection.classList.remove('progress-card--hidden');
@@ -454,7 +542,7 @@ class PopupOrchestrator {
       this.activeAbortController = null;
     }
     this.hideProgress();
-    this.showToast('Download geannuleerd.');
+    this.showToast(t('download_cancelled', this.currentLanguage));
   }
 
   showToast(msg) {

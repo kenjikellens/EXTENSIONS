@@ -28,9 +28,16 @@ export class ViewManager {
     }
 
     if (info.duration) {
-      const mins = Math.floor(info.duration / 60);
-      const secs = String(info.duration % 60).padStart(2, '0');
-      this.elements.videoDurationLabel.textContent = `${mins}:${secs}`;
+      const totalSecs = Math.floor(Number(info.duration) || 0);
+      const hours = Math.floor(totalSecs / 3600);
+      const mins = Math.floor((totalSecs % 3600) / 60);
+      const secs = String(totalSecs % 60).padStart(2, '0');
+
+      if (hours > 0) {
+        this.elements.videoDurationLabel.textContent = `${hours}:${String(mins).padStart(2, '0')}:${secs}`;
+      } else {
+        this.elements.videoDurationLabel.textContent = `${mins}:${secs}`;
+      }
       this.elements.videoDurationLabel.style.display = 'inline-block';
     } else {
       this.elements.videoDurationLabel.style.display = 'none';

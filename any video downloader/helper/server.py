@@ -218,8 +218,54 @@ class FormatExtractor:
     Extracts only the actual available resolutions, audio bitrates, and subtitle tracks from video metadata.
     """
 
-    @staticmethod
-    def parse_metadata(info_dict):
+    LANGUAGE_MAP = {
+        'nl': 'Nederlands',
+        'en': 'English',
+        'de': 'Deutsch',
+        'fr': 'Français',
+        'es': 'Español',
+        'it': 'Italiano',
+        'pt': 'Português',
+        'pt-br': 'Português (Brasil)',
+        'ru': 'Русский',
+        'ja': '日本語 (Japans)',
+        'ko': '한국어 (Koreaans)',
+        'zh': '中文 (Chinees)',
+        'zh-hans': '中文 (Vereenvoudigd)',
+        'zh-hant': '中文 (Traditioneel)',
+        'ar': 'العربية (Arabisch)',
+        'hi': 'हिन्दी (Hindi)',
+        'tr': 'Türkçe',
+        'pl': 'Polski',
+        'uk': 'Українська',
+        'sv': 'Svenska',
+        'no': 'Norsk',
+        'da': 'Dansk',
+        'fi': 'Suomi',
+        'el': 'Ελληνικά (Grieks)',
+        'cs': 'Čeština',
+        'hu': 'Magyar',
+        'ro': 'Română',
+        'vi': 'Tiếng Việt',
+        'th': 'ไทย (Thais)',
+        'id': 'Bahasa Indonesia',
+        'ms': 'Bahasa Melayu',
+        'he': 'עברית (Hebreeuws)',
+        'fa': 'فارسی (Perzisch)',
+        'bn': 'বাংলা (Bengaals)',
+        'ur': 'اردو (Urdu)',
+        'bg': 'Български',
+        'hr': 'Hrvatski',
+        'sr': 'Српски',
+        'sk': 'Slovenčina',
+        'sl': 'Slovenščina',
+        'lt': 'Lietuvių',
+        'lv': 'Latviešu',
+        'et': 'Eesti',
+    }
+
+    @classmethod
+    def parse_metadata(cls, info_dict):
         """
         Parses raw yt-dlp JSON dictionary into clean, deduplicated available options.
         """
@@ -244,33 +290,46 @@ class FormatExtractor:
             video_options.append({"height": h, "label": label})
 
         # 2. Extract available audio bitrates for MP3 conversion
-        # Includes full standard spectrum: 320, 256, 192, 128, 96, 64 kbps
         standard_tiers = [320, 256, 192, 128, 96, 64]
-        audio_options = [{"abr": tier, "label": f"{tier} kbps"} for tier in standard_tiers]
 
-        # 3. Extract available subtitles
+        # Detect distinct audio languages if present (e.g. multi-language dubbed videos)
+        audio_languages = set()
+        for f in formats:
+            if f.get('vcodec') == 'none' and f.get('acodec') != 'none':
+                l = f.get('language')
+                if l and isinstance(l, str):
+                    audio_languages.add(l.lower())
+
+        if len(audio_languages) > 1:
+            audio_options = []
+            sorted_langs = sorted(
+                list(audio_languages),
+                key=lambda l: (l not in ['nl', 'en', 'de', 'fr', 'es'], l)
+            )
+            for lang_code in sorted_langs:
+                lang_name = cls.LANGUAGE_MAP.get(lang_code) or cls.LANGUAGE_MAP.get(lang_code.split('-')[0]) or lang_code.upper()
+                for tier in standard_tiers:
+                    audio_options.append({
+                        "abr": tier,
+                        "label": f"{tier} kbps ({lang_name})",
+                        "lang": lang_code
+                    })
+        else:
+            audio_options = [{"abr": tier, "label": f"{tier} kbps"} for tier in standard_tiers]
+
+        # 3. Extract all available subtitles
         subtitles_dict = info_dict.get('subtitles', {})
         auto_captions = info_dict.get('automatic_captions', {})
         all_subs = {**auto_captions, **subtitles_dict}
 
         subtitle_options = []
         for lang_code in all_subs.keys():
-            name = lang_code.upper()
-            if lang_code == 'nl':
-                name = 'Nederlands'
-            elif lang_code == 'en':
-                name = 'English'
-            elif lang_code == 'fr':
-                name = 'Français'
-            elif lang_code == 'de':
-                name = 'Deutsch'
-            elif lang_code == 'es':
-                name = 'Español'
-
+            clean_code = lang_code.lower()
+            name = cls.LANGUAGE_MAP.get(clean_code) or cls.LANGUAGE_MAP.get(clean_code.split('-')[0]) or lang_code.upper()
             subtitle_options.append({"lang": lang_code, "name": name})
 
-        # Sort subtitles so standard languages appear first
-        subtitle_options.sort(key=lambda s: (s['lang'] not in ['nl', 'en', 'de', 'fr', 'es'], s['name']))
+        # Sort subtitles so standard languages appear first, then alphabetically by name
+        subtitle_options.sort(key=lambda s: (s['lang'].lower() not in ['nl', 'en', 'de', 'fr', 'es'], s['name']))
 
         return {
             "title": title,
@@ -279,7 +338,7 @@ class FormatExtractor:
             "url": webpage_url,
             "video": video_options,
             "audio": audio_options,
-            "subtitles": subtitle_options[:15]  # Limit to top 15 relevant languages
+            "subtitles": subtitle_options
         }
 
 
@@ -344,8 +403,11 @@ class DownloadManager:
             broadcast_log(f"Download gestart (Video {height or 'best'}p): {url}")
 
         elif dl_type == 'audio':
+            audio_lang = params.get('lang')
+            if audio_lang:
+                ytdlp_cmd.extend(['-f', f"bestaudio[language={audio_lang}]/bestaudio/best"])
             ytdlp_cmd.extend(['-x', '--audio-format', 'mp3', '--audio-quality', f"{abr}k"])
-            broadcast_log(f"Download gestart (Audio {abr} kbps MP3): {url}")
+            broadcast_log(f"Download gestart (Audio {abr} kbps MP3{' [' + audio_lang + ']' if audio_lang else ''}): {url}")
 
         elif dl_type == 'subtitle':
             ytdlp_cmd.extend([

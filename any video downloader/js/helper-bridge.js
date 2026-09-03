@@ -10,12 +10,46 @@ export class HelperBridge {
 
   /**
    * Pings the local helper to check if it is active.
+   * If offline, attempts to auto-wake via Chrome Native Messaging and retries.
+   * @param {boolean} [autoWake=true] - Whether to attempt auto-waking the helper
    * @returns {Promise<{online: boolean, ytdlp?: boolean, ffmpeg?: boolean}>}
    */
-  async checkHealth() {
+  async checkHealth(autoWake = true) {
+    let health = await this._ping();
+    if (health.online) {
+      return health;
+    }
+
+    if (autoWake && typeof chrome !== 'undefined' && chrome.runtime) {
+      try {
+        // Request background service worker to wake the Native Messaging host
+        chrome.runtime.sendMessage({ action: 'ENSURE_HELPER' }).catch(() => {});
+      } catch {
+        // Ignore runtime errors
+      }
+
+      // Poll up to 6 times (1.5 seconds) for the headless server to bind port
+      for (let i = 0; i < 6; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        health = await this._ping();
+        if (health.online) {
+          return health;
+        }
+      }
+    }
+
+    return { online: false };
+  }
+
+  /**
+   * Sends a low-timeout HTTP ping to the helper daemon.
+   * @private
+   * @returns {Promise<{online: boolean, ytdlp?: boolean, ffmpeg?: boolean}>}
+   */
+  async _ping() {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1200);
+      const timeoutId = setTimeout(() => controller.abort(), 800);
 
       const res = await fetch(`${this.baseUrl}/ping`, { signal: controller.signal });
       clearTimeout(timeoutId);
@@ -33,16 +67,32 @@ export class HelperBridge {
   /**
    * Fetches parsed format metadata (video resolutions, audio bitrates, subtitles) for a video URL.
    * @param {string} url - Target video URL
+   * @param {number} [timeoutMs=15000] - Timeout in milliseconds
    * @returns {Promise<Object>}
    */
-  async getVideoInfo(url) {
-    const res = await fetch(`${this.baseUrl}/info?url=${encodeURIComponent(url)}`);
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `HTTP fout ${res.status}`);
+  async getVideoInfo(url, timeoutMs = 15000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const res = await fetch(`${this.baseUrl}/info?url=${encodeURIComponent(url)}`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP fout ${res.status}`);
+      }
+      const json = await res.json();
+      return json.data;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        throw new Error('Time-out bij ophalen van videoformaten (server reageerde niet binnen 15 seconden)');
+      }
+      throw err;
     }
-    const json = await res.json();
-    return json.data;
   }
 
   /**

@@ -52,3 +52,13 @@ Dit document houdt exact bij welke problemen zijn onderzocht, welke methoden zij
 * **Vaststelling**: In de downloadbubbel van Google Chrome (rechtsboven in de browserbalk) wordt voor `.exe`-bestanden een generiek icoontje getoond, terwijl het bestand in de Windows Verkenner map wél een echt ingebouwd icoon heeft.
 * **Oorzaak (Chromium Bug)**: In recente Chrome-versies (vanaf v151+) heeft Google een beveiligingsregressie geïntroduceerd waarbij de download-interface van de browser weigert embedded PE-iconen van niet-vertrouwde downloads uit te pakken in de browser-UI zelf. De browser toont daar altijd een standaardplaceholder.
 * **Verificatie**: Zodra je in Chrome klikt op **"Weergeven in map"** (of de map `Downloads` opent in Windows Verkenner), leest Windows het icoon rechtstreeks uit de PE binary en wordt het echte icoon gerenderd.
+
+---
+
+### 7. Schermloos Automatisch Starten via Chrome Native Messaging
+* **Doel**: De helper executable hoeft niet meer handmatig gestart te worden; de browser start hem zelf stil op de achtergrond en sluit hem direct af bij het sluiten van de browser.
+* **Onderzochte & Opgeloste Punten**:
+  1. *Unchecked runtime.lastError op stdout*: Chrome Native Messaging vereist een strikte 4-byte header op stdout. Tekst-logs vanuit `broadcast_log` braken het protocol. Opgelost door stdout om te leiden naar stderr en stdout exclusief voor binaire Native Messaging pakketten te gebruiken.
+  2. *Hangen van `yt-dlp` en 15% loader*: Kindprocessen erfden de stdin-pipe van Chrome waardoor ze bleven wachten op console-invoer. Opgelost door `stdin=subprocess.DEVNULL` toe te voegen aan `subprocess.run` en `subprocess.Popen`.
+  3. *Audio-bitrates*: Uitgebreid naar het volledige spectrum: 320, 256, 192, 128, 96 en 64 kbps.
+* *Resultaat*: **100% Opgelost**. Formaten laden binnen ~2.5s, helper draait stil op de achtergrond zonder venster.

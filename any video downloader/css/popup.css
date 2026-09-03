@@ -555,6 +555,23 @@ body.avd-app {
   transition: width 0.15s ease-out;
 }
 
+/* Indeterminate loader state while analyzing formats */
+.progress-bar-fill--indeterminate {
+  width: 100% !important;
+  background: linear-gradient(90deg, var(--color-download) 0%, #38bdf8 50%, var(--color-download) 100%);
+  background-size: 200% 100%;
+  animation: progress-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes progress-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 /* Bottom status row of progress card containing speed and cancel button */
 .progress-card__footer {
   display: flex;

@@ -1,0 +1,9 @@
+{
+  "name": "com.kenjigames.any_video_downloader",
+  "description": "Any Video Downloader Helper Native Host",
+  "path": "%LOCALAPPDATA%\\AnyVideoDownloader\\AnyVideoDownloaderHelper.exe",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://dobnkoiladafpdokalpkggcpkcallaei/"
+  ]
+}

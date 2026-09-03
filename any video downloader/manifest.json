@@ -3,13 +3,15 @@
   "name": "Any Video Downloader",
   "version": "2.0.1",
   "description": "Detecteer, sniff en download video's, HLS (.m3u8), DASH (.mpd), MP4 en Blobs.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuIjPtEyn+b7qC9GLBKBsZwMliHZ7OJe5cS28G8j2R4rgo+tU7LoL3GrQLO/MZr83dkF1P/HL+5PzlMKpYMUET5Poz/CNbRbuuE44/UTSWDG/Lmo5T5tZz7ZHYp6PB3RH0L3lPxPilFzJpgUZBbFgmqrOi0B5fK8CY6RPy9TU4At3ixBur+5HgwU6sEBqhzxWEAYu3FlW+D7lzmbLS6suu6ECXIy0/zRgtPNWtr2FNdLsFazOjZSPeJLxWGZhNL+ltzLORYPrBXYP/BnPq3eGVQZNGFLzegyk+5QKkBB6w54rXQPsJ4d6jt0HBa3rTJf2fzGOwReWnjitXi7FN2FWXQIDAQAB",
   "permissions": [
     "webRequest",
     "downloads",
     "storage",
     "tabs",
     "activeTab",
-    "scripting"
+    "scripting",
+    "nativeMessaging"
   ],
   "host_permissions": [
     "<all_urls>"

@@ -4,7 +4,10 @@ Provides a modern dark-mode control panel with an ON/OFF toggle switch, live sta
 No black command line window.
 """
 
+import json
 import os
+import shutil
+import struct
 import subprocess
 import sys
 import threading
@@ -15,6 +18,10 @@ from tkinter import messagebox
 
 # Import the core daemon manager from server.py
 from server import DaemonServerManager, ToolResolver, register_log_callback, unregister_log_callback, PORT, HOST
+
+# Chrome Native Messaging Constants
+NATIVE_HOST_NAME = "com.kenjigames.any_video_downloader"
+EXTENSION_ID = "dobnkoiladafpdokalpkggcpkcallaei"
 
 
 # Ensure Windows Taskbar links the window to Kenjigames app model ID
@@ -281,6 +288,23 @@ class ModernHelperGUI:
         )
         open_dl_btn.pack(side="left")
 
+        # Browser link / install button
+        self.install_btn = tk.Button(
+            footer_frame,
+            text="🔗 Koppel aan Browser",
+            font=("Segoe UI", 9),
+            bg="#0284c7",
+            fg="#ffffff",
+            activebackground="#0369a1",
+            activeforeground="#ffffff",
+            relief="flat",
+            cursor="hand2",
+            padx=10,
+            pady=6,
+            command=self._on_install_click
+        )
+        self.install_btn.pack(side="left", padx=(8, 0))
+
         # Clear logs button
         clear_btn = tk.Button(
             footer_frame,
@@ -297,6 +321,17 @@ class ModernHelperGUI:
             command=self._clear_logs
         )
         clear_btn.pack(side="right")
+
+    def _on_install_click(self):
+        """Installs the helper to %LOCALAPPDATA% and registers Native Messaging."""
+        try:
+            install_host()
+            messagebox.showinfo(
+                "Succesvol Gekoppeld",
+                "Any Video Downloader Helper is succesvol geïnstalleerd in %LOCALAPPDATA%\\AnyVideoDownloader en gekoppeld aan Chrome, Edge en Brave!\n\nDe helper start nu automatisch stil op de achtergrond zodra je de browser gebruikt."
+            )
+        except Exception as e:
+            messagebox.showerror("Fout bij koppelen", f"Kon koppeling niet voltooien: {e}")
 
     def _toggle_server(self):
         """Toggles HTTP daemon server state."""
@@ -354,6 +389,157 @@ class ModernHelperGUI:
         self.root.destroy()
 
 
+def get_appdata_dir():
+    """Returns %LOCALAPPDATA%\\AnyVideoDownloader directory path."""
+    local_appdata = os.environ.get('LOCALAPPDATA') or str(Path.home() / 'AppData' / 'Local')
+    return Path(local_appdata) / "AnyVideoDownloader"
+
+
+def install_host():
+    """
+    Installs AnyVideoDownloaderHelper to %LOCALAPPDATA%\\AnyVideoDownloader\\,
+    writes Native Messaging manifest JSON, and registers NativeMessagingHosts in HKCU.
+    Requires no administrative privileges.
+    """
+    import winreg
+    target_dir = get_appdata_dir()
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    if getattr(sys, 'frozen', False):
+        current_exe = Path(sys.executable).resolve()
+    else:
+        current_exe = Path(__file__).resolve()
+
+    target_exe = target_dir / "AnyVideoDownloaderHelper.exe"
+
+    # Copy current executable if running from PyInstaller bundle and different path
+    if current_exe != target_exe and current_exe.exists() and current_exe.suffix.lower() == '.exe':
+        try:
+            shutil.copy2(str(current_exe), str(target_exe))
+        except Exception:
+            pass
+
+    manifest_exe = target_exe if target_exe.exists() else current_exe
+
+    # Write Native Messaging Host manifest JSON
+    manifest_data = {
+        "name": NATIVE_HOST_NAME,
+        "description": "Any Video Downloader Helper Native Host",
+        "path": str(manifest_exe),
+        "type": "stdio",
+        "allowed_origins": [
+            f"chrome-extension://{EXTENSION_ID}/"
+        ]
+    }
+    manifest_file = target_dir / f"{NATIVE_HOST_NAME}.json"
+    with open(manifest_file, 'w', encoding='utf-8') as f:
+        json.dump(manifest_data, f, indent=2)
+
+    # Register in Windows HKCU registry for Chromium browsers
+    registry_targets = [
+        rf"Software\Google\Chrome\NativeMessagingHosts\{NATIVE_HOST_NAME}",
+        rf"Software\Microsoft\Edge\NativeMessagingHosts\{NATIVE_HOST_NAME}",
+        rf"Software\BraveSoftware\Brave-Browser\NativeMessagingHosts\{NATIVE_HOST_NAME}",
+        rf"Software\Chromium\NativeMessagingHosts\{NATIVE_HOST_NAME}"
+    ]
+    for reg_path in registry_targets:
+        try:
+            key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, reg_path)
+            winreg.SetValue(key, "", winreg.REG_SZ, str(manifest_file))
+            winreg.CloseKey(key)
+        except Exception:
+            pass
+
+    return True
+
+
+def uninstall_host():
+    """
+    Removes NativeMessagingHosts registry keys and cleans up %LOCALAPPDATA%\\AnyVideoDownloader.
+    """
+    import winreg
+    registry_targets = [
+        rf"Software\Google\Chrome\NativeMessagingHosts\{NATIVE_HOST_NAME}",
+        rf"Software\Microsoft\Edge\NativeMessagingHosts\{NATIVE_HOST_NAME}",
+        rf"Software\BraveSoftware\Brave-Browser\NativeMessagingHosts\{NATIVE_HOST_NAME}",
+        rf"Software\Chromium\NativeMessagingHosts\{NATIVE_HOST_NAME}"
+    ]
+    for reg_path in registry_targets:
+        try:
+            winreg.DeleteKey(winreg.HKEY_CURRENT_USER, reg_path)
+        except Exception:
+            pass
+
+    target_dir = get_appdata_dir()
+    if target_dir.exists():
+        try:
+            shutil.rmtree(str(target_dir))
+        except Exception:
+            pass
+    return True
+
+
+def run_native_host():
+    """
+    Runs the helper in 100% headless Native Messaging Host mode.
+    No Tkinter GUI is created. No console window is shown.
+    Redirects sys.stdout to sys.stderr to protect the Native Messaging binary protocol.
+    Starts the HTTP daemon server on port 48921.
+    Listens on sys.stdin.buffer for Native Messaging messages.
+    Exits cleanly as soon as the browser closes (EOF on stdin).
+    """
+    # Grab binary streams before redirecting standard stdout
+    native_in = sys.stdin.buffer
+    native_out = sys.stdout.buffer
+
+    # Route all normal print/logging to stderr so stdout remains 100% pure binary protocol
+    sys.stdout = sys.stderr
+
+    # Start the HTTP server daemon on port 48921
+    DaemonServerManager.start()
+
+    try:
+        while True:
+            # Native Messaging: 4 bytes unsigned int (little-endian)
+            raw_len = native_in.read(4)
+            if not raw_len or len(raw_len) < 4:
+                # Browser closed pipe or exited -> clean shutdown
+                break
+
+            msg_len = struct.unpack('<I', raw_len)[0]
+            if msg_len == 0:
+                continue
+
+            raw_msg = native_in.read(msg_len)
+            if not raw_msg or len(raw_msg) < msg_len:
+                break
+
+            try:
+                msg = json.loads(raw_msg.decode('utf-8'))
+            except Exception:
+                msg = {}
+
+            # Construct response packet
+            response = {
+                "status": "online",
+                "port": PORT,
+                "ytdlp": ToolResolver.get_binary_path('yt-dlp') is not None,
+                "ffmpeg": ToolResolver.get_binary_path('ffmpeg') is not None,
+                "echo": msg.get("action", "pong")
+            }
+
+            resp_bytes = json.dumps(response).encode('utf-8')
+            native_out.write(struct.pack('<I', len(resp_bytes)))
+            native_out.write(resp_bytes)
+            native_out.flush()
+    except Exception:
+        pass
+    finally:
+        # Shutdown daemon cleanly and terminate process
+        DaemonServerManager.stop()
+        sys.exit(0)
+
+
 def launch_gui():
     """Launches the Tkinter modern helper GUI."""
     root = tk.Tk()
@@ -362,4 +548,19 @@ def launch_gui():
 
 
 if __name__ == '__main__':
-    launch_gui()
+    args = sys.argv[1:]
+    is_native = any(
+        arg.startswith('chrome-extension://') or arg in ('--native-host', '--native', '-n')
+        for arg in args
+    )
+
+    if '--install' in args:
+        install_host()
+        sys.exit(0)
+    elif '--uninstall' in args:
+        uninstall_host()
+        sys.exit(0)
+    elif '--silent' in args or '--headless' in args or is_native:
+        run_native_host()
+    else:
+        launch_gui()

@@ -243,23 +243,10 @@ class FormatExtractor:
             label = f"{h}p (4K)" if h >= 2160 else f"{h}p"
             video_options.append({"height": h, "label": label})
 
-        # 2. Extract distinct available audio bitrates
-        available_bitrates = set()
-        for f in formats:
-            abr = f.get('abr')
-            if abr and isinstance(abr, (int, float)) and abr > 0:
-                available_bitrates.add(int(abr))
-
-        # Standard clean bitrate tiers up to max source bitrate
-        standard_tiers = [320, 256, 192, 128, 64]
-        max_source_abr = max(available_bitrates) if available_bitrates else 128
-        audio_options = []
-        for tier in standard_tiers:
-            if tier <= max(max_source_abr, 128) or tier == 128 or tier == 320:
-                audio_options.append({"abr": tier, "label": f"{tier} kbps"})
-
-        if not audio_options:
-            audio_options = [{"abr": 320, "label": "320 kbps"}, {"abr": 128, "label": "128 kbps"}]
+        # 2. Extract available audio bitrates for MP3 conversion
+        # Includes full standard spectrum: 320, 256, 192, 128, 96, 64 kbps
+        standard_tiers = [320, 256, 192, 128, 96, 64]
+        audio_options = [{"abr": tier, "label": f"{tier} kbps"} for tier in standard_tiers]
 
         # 3. Extract available subtitles
         subtitles_dict = info_dict.get('subtitles', {})
@@ -378,6 +365,7 @@ class DownloadManager:
 
             process = subprocess.Popen(
                 ytdlp_cmd,
+                stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -499,6 +487,7 @@ class HelperHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                 cmd = [ytdlp_bin, '-J', '--no-playlist', target_url]
                 res = subprocess.run(
                     cmd,
+                    stdin=subprocess.DEVNULL,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,

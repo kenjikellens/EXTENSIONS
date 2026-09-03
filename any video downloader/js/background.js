@@ -280,9 +280,67 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true; // Keep message channel open for async response
     }
 
+    case 'ENSURE_HELPER': {
+      ensureNativeHelper();
+      sendResponse({ success: true });
+      break;
+    }
+
     default:
       sendResponse({ success: false, error: 'Unknown action' });
   }
 
   return true;
 });
+
+// Native Messaging Host Controller
+let nativePort = null;
+
+/**
+ * Ensures Native Messaging Host connection is active.
+ * Chrome launches AnyVideoDownloaderHelper in headless mode in the background.
+ * Exits cleanly when the browser closes.
+ * @returns {chrome.runtime.Port|null}
+ */
+function ensureNativeHelper() {
+  if (nativePort) return nativePort;
+  if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.connectNative) return null;
+  try {
+    nativePort = chrome.runtime.connectNative('com.kenjigames.any_video_downloader');
+    nativePort.onMessage.addListener(() => {
+      // Received response from native helper
+    });
+    nativePort.onDisconnect.addListener(() => {
+      // Consume lastError to prevent Chromium Unchecked runtime.lastError logs
+      const err = chrome.runtime.lastError;
+      if (err) {
+        // Disconnected or stopped cleanly
+      }
+      nativePort = null;
+    });
+    nativePort.postMessage({ action: 'ping' });
+    return nativePort;
+  } catch {
+    nativePort = null;
+    return null;
+  }
+}
+
+// Auto-connect when visiting YouTube or upon browser startup
+if (typeof chrome !== 'undefined' && chrome.runtime) {
+  chrome.runtime.onStartup?.addListener(() => {
+    ensureNativeHelper();
+  });
+
+  chrome.runtime.onInstalled?.addListener(() => {
+    ensureNativeHelper();
+  });
+}
+
+if (typeof chrome !== 'undefined' && chrome.tabs) {
+  chrome.tabs.onUpdated?.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'loading' && tab?.url && (tab.url.includes('youtube.com') || tab.url.includes('youtu.be'))) {
+      ensureNativeHelper();
+    }
+  });
+}

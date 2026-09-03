@@ -185,7 +185,7 @@ class PopupOrchestrator {
       this.viewManager.hideSetupBanner();
       try {
         const progressMsg = health.ytdlp ? 'Video formaten analyseren...' : 'yt-dlp component voorbereiden & analyseren...';
-        this.showProgress(progressMsg, 15);
+        this.showProgress(progressMsg, null, 'Even geduld...', true);
         const data = await this.helperBridge.getVideoInfo(url);
         this.hideProgress();
 
@@ -201,6 +201,16 @@ class PopupOrchestrator {
           displayErr = 'yt-dlp component wordt geïnitialiseerd of ontbreekt. Herlaad over enkele seconden.';
         }
         this.showToast(displayErr);
+
+        // Show setup banner on error so user can download/reinstall helper
+        this.viewManager.renderSetupBanner(async () => {
+          try {
+            await HelperPackageBuilder.downloadHelperPackage();
+            this.showToast('AnyVideoDownloaderHelper.exe gedownload!');
+          } catch {
+            this.showToast('Kon helper bestand niet downloaden.');
+          }
+        });
       }
     } else {
       // Helper is offline -> show setup banner and start automatic auto-check
@@ -408,18 +418,28 @@ class PopupOrchestrator {
   }
 
   /**
-   * Progress card update.
+   * Progress card update with indeterminate support.
    */
-  showProgress(status, percent, speed = '') {
+  showProgress(status, percent, speed = '', isIndeterminate = false) {
     this.elements.progressSection.classList.remove('progress-card--hidden');
     this.elements.progressStatusLabel.textContent = status;
-    this.elements.progressPercentLabel.textContent = `${Math.round(percent)}%`;
-    this.elements.progressBarFill.style.width = `${percent}%`;
+
+    if (isIndeterminate || percent === null || percent === undefined) {
+      this.elements.progressPercentLabel.textContent = '...';
+      this.elements.progressBarFill.classList.add('progress-bar-fill--indeterminate');
+      this.elements.progressBarFill.style.width = '100%';
+    } else {
+      this.elements.progressBarFill.classList.remove('progress-bar-fill--indeterminate');
+      this.elements.progressPercentLabel.textContent = `${Math.round(percent)}%`;
+      this.elements.progressBarFill.style.width = `${percent}%`;
+    }
+
     this.elements.progressSpeedLabel.textContent = speed;
   }
 
   hideProgress() {
     this.elements.progressSection.classList.add('progress-card--hidden');
+    this.elements.progressBarFill.classList.remove('progress-bar-fill--indeterminate');
     this.elements.progressBarFill.style.width = '0%';
     this.elements.progressSpeedLabel.textContent = '';
   }

@@ -23,6 +23,9 @@ if not exist "%TARGET_DIR%" (
 
 :: 2. Kopieer de executable
 if exist "%EXE_SRC%" (
+    echo [*] Eventueel actieve helper afsluiten voor update...
+    taskkill /f /im AnyVideoDownloaderHelper.exe >nul 2>&1
+    timeout /t 1 /nobreak >nul
     echo [*] AnyVideoDownloaderHelper.exe kopiëren...
     copy /y "%EXE_SRC%" "%EXE_DEST%" >nul
 ) else (

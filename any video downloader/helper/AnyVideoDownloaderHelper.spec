@@ -5,12 +5,15 @@ from pathlib import Path
 base_dir = Path(SPECPATH).resolve()
 icons_dir = base_dir.parent / "icons"
 
+binaries_list = []
+ytdlp_local = base_dir / 'yt-dlp.exe'
+if ytdlp_local.exists():
+    binaries_list.append((str(ytdlp_local), '.'))
+
 a = Analysis(
     [str(base_dir / 'app_gui.py')],
     pathex=[str(base_dir)],
-    binaries=[
-        (str(base_dir / 'yt-dlp.exe'), '.'),
-    ],
+    binaries=binaries_list,
     datas=[
         (str(icons_dir / 'icon.ico'), '.'),
         (str(icons_dir / 'icon.png'), '.'),

@@ -312,13 +312,14 @@ class FormatExtractor:
         available_heights = set()
         for f in formats:
             h = f.get('height')
-            if h and isinstance(h, int) and h >= 144:
+            vcodec = f.get('vcodec')
+            if h and isinstance(h, int) and h >= 144 and vcodec and vcodec != 'none':
                 available_heights.add(h)
 
         sorted_heights = sorted(list(available_heights), reverse=True)
         video_options = []
         for h in sorted_heights:
-            label = f"{h}p (4K)" if h >= 2160 else f"{h}p"
+            label = f"{h}p (8K)" if h >= 4320 else f"{h}p (4K)" if h >= 2160 else f"{h}p"
 
             # Find matching video streams for this height to extract best FPS and primary codec
             height_formats = [
@@ -334,6 +335,14 @@ class FormatExtractor:
 
             best_f = height_formats[0] if height_formats else None
             fps_val = best_f.get('fps') if best_f else None
+            if not fps_val and best_f:
+                note = str(best_f.get('format_note') or '')
+                m = re.search(r'(\d{2,3})fps', note, re.I)
+                if m:
+                    try:
+                        fps_val = float(m.group(1))
+                    except ValueError:
+                        pass
             fps_label = f"{int(round(fps_val))} fps" if fps_val and fps_val >= 1 else None
             codec = cls._normalize_codec(best_f.get('vcodec')) if best_f else 'h264'
 

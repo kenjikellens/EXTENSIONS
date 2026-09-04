@@ -459,6 +459,15 @@ def install_host():
     # Copy current executable if running from PyInstaller bundle and different path
     if current_exe.exists() and current_exe.suffix.lower() == '.exe' and current_exe != target_exe:
         try:
+            my_pid = os.getpid()
+            if os.name == 'nt':
+                subprocess.run(
+                    ["powershell", "-NoProfile", "-Command",
+                     f"Get-CimInstance Win32_Process | Where-Object {{ $_.ProcessId -ne {my_pid} -and $_.ExecutablePath -like '*{target_dir.name}*AnyVideoDownloaderHelper.exe' }} | ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force }}"],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    creationflags=subprocess.CREATE_NO_WINDOW
+                )
+                time.sleep(0.3)
             shutil.copy2(str(current_exe), str(target_exe))
         except Exception:
             pass

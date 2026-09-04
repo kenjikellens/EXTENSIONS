@@ -1,4 +1,4 @@
-('C:\\Users\\kenji\\Documents\\PROJECTS\\EXTENSIONS\\any video '
+('C:\\Users\\kenji\\Documents\\projects for fun\\EXTENSIONS\\any video '
  'downloader\\helper\\build\\AnyVideoDownloaderHelper\\PYZ-00.pyz',
  [('__future__',
    'C:\\Users\\kenji\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\__future__.py',
@@ -316,7 +316,7 @@
    'C:\\Users\\kenji\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\selectors.py',
    'PYMODULE'),
   ('server',
-   'C:\\Users\\kenji\\Documents\\PROJECTS\\EXTENSIONS\\any video '
+   'C:\\Users\\kenji\\Documents\\projects for fun\\EXTENSIONS\\any video '
    'downloader\\helper\\server.py',
    'PYMODULE'),
   ('shutil',
